@@ -1,0 +1,1897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Robotics Intelligence Platform</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07090f;--surface:#0f1623;--surface2:#161e2e;--border:#1e2d45;
+  --text:#e2e8f0;--muted:#64748b;--accent:#6366f1;--accent2:#818cf8;
+  --green:#10b981;--yellow:#f59e0b;--red:#ef4444;--teal:#06b6d4;
+  --radius:10px;--font:'Inter',system-ui,sans-serif;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;overflow:hidden}
+a{color:inherit;text-decoration:none}
+
+/* LAYOUT */
+.app{display:flex;height:100vh}
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{height:56px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;flex-shrink:0}
+.content{flex:1;overflow-y:auto;padding:24px;scroll-behavior:smooth}
+
+/* SIDEBAR */
+.logo{padding:20px 18px;border-bottom:1px solid var(--border)}
+.logo-title{font-size:15px;font-weight:700;color:#fff;letter-spacing:-0.3px}
+.logo-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.nav{padding:12px 0;flex:1}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 18px;cursor:pointer;border-radius:0;transition:all .15s;color:var(--muted);font-size:13px;font-weight:500;position:relative}
+.nav-item:hover{color:var(--text);background:rgba(99,102,241,.06)}
+.nav-item.active{color:var(--accent2);background:rgba(99,102,241,.1)}
+.nav-item.active::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent);border-radius:0 2px 2px 0}
+.nav-icon{width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sidebar-footer{padding:14px 18px;border-top:1px solid var(--border)}
+.premium-badge{background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:6px;padding:8px 12px;font-size:11px;color:#fff;font-weight:600}
+.premium-badge span{display:block;font-weight:400;opacity:.8;margin-top:2px;font-size:10px}
+
+/* TOPBAR */
+.topbar-left{display:flex;align-items:center;gap:10px}
+.page-title{font-size:15px;font-weight:600;color:#fff}
+.page-sub{font-size:12px;color:var(--muted)}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent2)}
+.btn-outline{background:transparent;color:var(--muted);border:1px solid var(--border)}
+.btn-outline:hover{color:var(--text);border-color:var(--accent)}
+.live-dot{width:7px;height:7px;background:var(--green);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* CARDS */
+.grid{display:grid;gap:16px}
+.grid-4{grid-template-columns:repeat(4,1fr)}
+.grid-3{grid-template-columns:repeat(3,1fr)}
+.grid-2{grid-template-columns:repeat(2,1fr)}
+.grid-1{grid-template-columns:1fr}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.card-sm{padding:16px}
+.card-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:4px}
+.card-value{font-size:28px;font-weight:700;color:#fff;line-height:1.1}
+.card-delta{font-size:12px;color:var(--muted);margin-top:4px}
+.card-delta .up{color:var(--green)}
+.card-delta .down{color:var(--red)}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-h{font-size:13px;font-weight:600;color:#fff}
+
+/* TAGS */
+.tag{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.3px}
+.tag-invest{background:rgba(16,185,129,.15);color:#34d399;border:1px solid rgba(16,185,129,.25)}
+.tag-watch{background:rgba(245,158,11,.15);color:#fbbf24;border:1px solid rgba(245,158,11,.25)}
+.tag-saturated{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.25)}
+.tag-premium{background:linear-gradient(135deg,rgba(99,102,241,.2),rgba(139,92,246,.2));color:#a78bfa;border:1px solid rgba(99,102,241,.3);cursor:pointer}
+
+/* INSIGHT CARDS */
+.insight-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;transition:all .2s;position:relative;overflow:hidden}
+.insight-card:hover{border-color:rgba(99,102,241,.4);transform:translateY(-1px)}
+.insight-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.insight-card.invest::before{background:var(--green)}
+.insight-card.watch::before{background:var(--yellow)}
+.insight-card.saturated::before{background:var(--red)}
+.insight-title{font-size:14px;font-weight:700;color:#fff;margin:10px 0 6px}
+.insight-reason{font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:10px}
+.insight-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.insight-meta-item{background:var(--surface2);border-radius:7px;padding:10px 12px}
+.insight-meta-label{font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.insight-meta-text{font-size:12px;color:var(--text);line-height:1.5}
+.insight-action{background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-radius:7px;padding:10px 12px;margin-top:10px}
+.insight-action-label{font-size:10px;color:var(--accent2);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.insight-action-text{font-size:12px;color:var(--text);font-weight:500}
+
+/* HEATMAP */
+.heatmap-wrap{overflow-x:auto}
+.heatmap{display:grid;border:1px solid var(--border);border-radius:8px;overflow:hidden;min-width:700px}
+.heatmap-row{display:grid;grid-template-columns:130px repeat(7,1fr)}
+.heatmap-cell{padding:10px 8px;text-align:center;font-size:11px;font-weight:600;border-bottom:1px solid var(--border);border-right:1px solid var(--border);transition:all .15s;cursor:pointer;position:relative}
+.heatmap-cell:last-child{border-right:none}
+.heatmap-row:last-child .heatmap-cell{border-bottom:none}
+.heatmap-cell:hover{filter:brightness(1.3);z-index:1}
+.hm-header{background:var(--surface2);color:var(--muted);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;font-weight:600}
+.hm-label{background:var(--surface2);color:var(--text);font-size:11px;font-weight:600;text-align:left;padding-left:12px}
+.hm-0{background:rgba(239,68,68,.05);color:var(--red)}
+.hm-1{background:rgba(245,158,11,.1);color:#fbbf24}
+.hm-2{background:rgba(245,158,11,.2);color:#fbbf24}
+.hm-3{background:rgba(99,102,241,.2);color:var(--accent2)}
+.hm-4{background:rgba(99,102,241,.3);color:var(--accent2)}
+.hm-5{background:rgba(16,185,129,.2);color:#34d399}
+.hm-6{background:rgba(16,185,129,.3);color:#34d399}
+.hm-7{background:rgba(16,185,129,.4);color:#10b981}
+.hm-8{background:rgba(16,185,129,.5);color:#059669}
+.hm-9plus{background:rgba(16,185,129,.65);color:#047857}
+.hm-zero-badge{font-size:8px;font-weight:800;color:var(--red)}
+.hm-legend{display:flex;align-items:center;gap:6px;margin-top:12px;font-size:11px;color:var(--muted)}
+.hm-legend-item{display:flex;align-items:center;gap:4px}
+.hm-legend-dot{width:12px;height:12px;border-radius:3px}
+
+/* COMPANY TABLE */
+.company-table{width:100%;border-collapse:separate;border-spacing:0}
+.company-table th{text-align:left;padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);border-bottom:1px solid var(--border);background:var(--surface2);position:sticky;top:0}
+.company-table td{padding:10px 14px;font-size:12px;border-bottom:1px solid rgba(30,45,69,.5);vertical-align:middle}
+.company-table tr:hover td{background:rgba(99,102,241,.04)}
+.company-name{font-weight:600;color:#fff}
+.company-country{font-size:11px;color:var(--muted)}
+.public-badge{padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700}
+.public-badge.public{background:rgba(16,185,129,.15);color:#34d399}
+.public-badge.private{background:rgba(100,116,139,.15);color:var(--muted)}
+.funding-cell{font-size:11px;color:var(--teal)}
+.search-bar{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;outline:none;transition:border .15s;margin-bottom:14px}
+.search-bar:focus{border-color:var(--accent)}
+.search-bar::placeholder{color:var(--muted)}
+.filter-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.filter-btn{padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--muted);transition:all .15s}
+.filter-btn:hover{color:var(--text);border-color:var(--accent)}
+.filter-btn.active{background:rgba(99,102,241,.15);color:var(--accent2);border-color:var(--accent)}
+
+/* QUERY */
+.query-box{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:20px}
+.query-input-row{display:flex;gap:10px}
+.query-input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;color:var(--text);font-size:13px;outline:none;transition:border .15s}
+.query-input:focus{border-color:var(--accent)}
+.query-input::placeholder{color:var(--muted)}
+.query-suggestions{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+.query-chip{padding:5px 12px;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-radius:20px;font-size:11px;color:var(--accent2);cursor:pointer;transition:all .15s}
+.query-chip:hover{background:rgba(99,102,241,.18)}
+.query-result{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;margin-top:16px}
+.query-answer{font-size:15px;font-weight:600;color:#fff;margin-bottom:12px;line-height:1.5}
+.query-data-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(30,45,69,.5)}
+.query-data-row:last-child{border-bottom:none}
+.query-data-label{font-size:12px;color:var(--text)}
+.query-data-bar-wrap{flex:1;margin:0 14px;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.query-data-bar{height:100%;border-radius:2px;transition:width .5s ease}
+.query-data-value{font-size:12px;font-weight:700;color:var(--teal);min-width:60px;text-align:right}
+
+/* CAPITAL */
+.capital-list{display:flex;flex-direction:column;gap:8px}
+.capital-item{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--surface2);border-radius:8px}
+.capital-rank{width:22px;height:22px;border-radius:50%;background:rgba(99,102,241,.15);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--accent2);flex-shrink:0}
+.capital-name{flex:1;font-size:12px;font-weight:600;color:var(--text)}
+.capital-sector{font-size:10px;color:var(--muted)}
+.capital-bar-wrap{width:120px;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.capital-bar{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--accent),var(--teal))}
+.capital-amt{font-size:11px;font-weight:700;color:var(--teal);min-width:65px;text-align:right}
+
+/* SECTION */
+.section{margin-bottom:28px}
+.section-title{font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.section-sub{font-size:12px;color:var(--muted);margin-bottom:16px}
+.divider{height:1px;background:var(--border);margin:24px 0}
+.chart-wrap{position:relative;height:260px}
+.chart-wrap-sm{position:relative;height:200px}
+
+/* TOOLTIP */
+.tooltip{position:fixed;background:#1e293b;border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:12px;pointer-events:none;z-index:1000;max-width:220px;box-shadow:0 10px 30px rgba(0,0,0,.4);display:none}
+
+/* PREMIUM BLUR */
+.premium-block{position:relative}
+.premium-overlay{position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,rgba(7,9,15,.95) 60%,rgba(7,9,15,1) 100%);border-radius:var(--radius);display:flex;align-items:flex-end;justify-content:center;padding-bottom:20px;pointer-events:none}
+.premium-cta{pointer-events:all;text-align:center}
+.premium-cta-title{font-size:13px;font-weight:700;color:#fff;margin-bottom:6px}
+.premium-cta-sub{font-size:11px;color:var(--muted);margin-bottom:12px}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;width:560px;max-height:80vh;overflow-y:auto}
+.modal-title{font-size:16px;font-weight:700;color:#fff;margin-bottom:4px}
+.modal-sub{font-size:12px;color:var(--muted);margin-bottom:20px}
+.export-section{background:var(--surface2);border-radius:8px;padding:14px;margin-bottom:12px;font-size:11px;color:var(--text);line-height:1.8;white-space:pre-wrap;font-family:monospace;max-height:200px;overflow-y:auto}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}
+
+/* EMPTY */
+.empty{text-align:center;padding:40px;color:var(--muted);font-size:13px}
+
+/* RESPONSIVE GRID */
+@media(max-width:1200px){.grid-4{grid-template-columns:repeat(2,1fr)}}
+
+/* LIVE / REFRESH */
+.refresh-btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid rgba(6,182,212,.4);background:rgba(6,182,212,.08);color:var(--teal);transition:all .2s}
+.refresh-btn:hover{background:rgba(6,182,212,.15);border-color:var(--teal)}
+.refresh-btn.loading{opacity:.7;cursor:not-allowed}
+.refresh-btn svg{transition:transform .5s}
+.refresh-btn.loading svg{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.live-status{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);margin-left:8px}
+.live-status .dot-live{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+.live-status .dot-stale{width:6px;height:6px;border-radius:50%;background:var(--muted)}
+
+/* SIGNAL CARD */
+.signal-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;transition:border .2s;position:relative}
+.signal-card:hover{border-color:rgba(6,182,212,.3)}
+.signal-card .signal-badge{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.signal-badge.invest{background:rgba(16,185,129,.15);color:#34d399}
+.signal-badge.watch{background:rgba(245,158,11,.15);color:#fbbf24}
+.signal-badge.saturated{background:rgba(239,68,68,.15);color:#f87171}
+.signal-source{font-size:10px;color:var(--muted);margin-bottom:4px}
+.signal-title{font-size:13px;font-weight:600;color:#fff;line-height:1.4;margin-bottom:6px}
+.signal-body{font-size:11px;color:var(--muted);line-height:1.6}
+.signal-meta{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+.signal-tag{padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;background:rgba(99,102,241,.12);color:var(--accent2)}
+.signal-action{margin-top:8px;padding:8px 10px;background:rgba(6,182,212,.06);border:1px solid rgba(6,182,212,.15);border-radius:6px;font-size:11px;color:var(--teal)}
+
+/* MOMENTUM BAR */
+.momentum-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(30,45,69,.4)}
+.momentum-row:last-child{border-bottom:none}
+.momentum-label{min-width:100px;font-size:12px;font-weight:600;color:var(--text)}
+.momentum-bar-track{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.momentum-bar-fill{height:100%;border-radius:3px;transition:width .6s ease}
+.momentum-count{font-size:12px;font-weight:700;color:var(--teal);min-width:40px;text-align:right}
+.momentum-trend{font-size:10px;padding:2px 6px;border-radius:4px;font-weight:700}
+.trend-hot{background:rgba(16,185,129,.15);color:#34d399}
+.trend-warm{background:rgba(245,158,11,.15);color:#fbbf24}
+.trend-cold{background:rgba(100,116,139,.1);color:var(--muted)}
+
+/* FUSION */
+.fusion-cell{border-radius:8px;padding:14px;border:1px solid;transition:all .2s;cursor:pointer}
+.fusion-cell:hover{filter:brightness(1.15)}
+.fusion-high{background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.4)}
+.fusion-medium{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.3)}
+.fusion-low{background:rgba(99,102,241,.08);border-color:rgba(99,102,241,.2)}
+.fusion-gap{background:rgba(239,68,68,.06);border-color:rgba(239,68,68,.25)}
+
+/* NEWS ARTICLE */
+.article-item{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid rgba(30,45,69,.4)}
+.article-item:last-child{border-bottom:none}
+.article-dot{width:6px;height:6px;border-radius:50%;margin-top:5px;flex-shrink:0}
+.article-content{flex:1}
+.article-title{font-size:12px;font-weight:600;color:var(--text);line-height:1.4;margin-bottom:3px}
+.article-title a{transition:color .15s}
+.article-title a:hover{color:var(--accent2)}
+.article-meta{font-size:10px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap}
+
+/* LOADING SKELETON */
+.skeleton{background:linear-gradient(90deg,var(--surface2) 25%,var(--border) 50%,var(--surface2) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:6px;height:14px;margin-bottom:8px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* CONFIDENCE / TIME / DATA BASIS */
+.insight-scorerow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.score-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.3px}
+.conf-high{background:rgba(16,185,129,.12);color:#34d399;border:1px solid rgba(16,185,129,.25)}
+.conf-medium{background:rgba(245,158,11,.12);color:#fbbf24;border:1px solid rgba(245,158,11,.25)}
+.conf-low{background:rgba(100,116,139,.12);color:var(--muted);border:1px solid rgba(100,116,139,.2)}
+.time-immediate{background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.2)}
+.time-emerging{background:rgba(245,158,11,.1);color:#fbbf24;border:1px solid rgba(245,158,11,.2)}
+.time-longterm{background:rgba(99,102,241,.1);color:#818cf8;border:1px solid rgba(99,102,241,.2)}
+.databasis-block{background:var(--surface2);border-left:2px solid var(--border);border-radius:0 6px 6px 0;padding:10px 12px;margin-top:10px;font-size:11px;color:var(--muted);line-height:1.6}
+.databasis-block strong{color:var(--text)}
+.score-divider{width:1px;height:14px;background:var(--border)}
+.conf-indicator{display:flex;gap:3px;align-items:center}
+.conf-bar{width:6px;height:10px;border-radius:2px;background:var(--border)}
+.conf-bar.lit-green{background:#10b981}
+.conf-bar.lit-yellow{background:#f59e0b}
+.conf-bar.lit-gray{background:#64748b}
+
+/* WHY THIS MATTERS */
+.why-matters{background:linear-gradient(135deg,rgba(99,102,241,.08),rgba(6,182,212,.06));border:1px solid rgba(99,102,241,.2);border-radius:8px;padding:10px 14px;margin:10px 0;display:flex;align-items:flex-start;gap:10px}
+.why-matters-icon{font-size:14px;flex-shrink:0;margin-top:1px}
+.why-matters-text{font-size:12px;font-weight:600;color:var(--text);line-height:1.5}
+
+/* INSIGHT COUNTER BANNER */
+.insight-counter-bar{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:18px}
+.insight-counter-left{display:flex;align-items:center;gap:10px}
+.insight-counter-text{font-size:12px;color:var(--text);font-weight:600}
+.insight-counter-sub{font-size:11px;color:var(--muted)}
+.insight-free-pills{display:flex;gap:4px}
+.insight-pip{width:8px;height:8px;border-radius:2px;background:var(--green)}
+.insight-pip.locked{background:var(--border)}
+.insight-counter-cta{font-size:11px;font-weight:700;color:var(--accent2);cursor:pointer;padding:5px 12px;border:1px solid rgba(99,102,241,.3);border-radius:20px;transition:all .15s}
+.insight-counter-cta:hover{background:rgba(99,102,241,.1)}
+
+/* COMPANY RECOMMENDATIONS */
+.company-recs{margin-top:12px}
+.company-recs-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.company-recs-label::before{content:'';flex:1;height:1px;background:var(--border)}
+.company-recs-grid{display:flex;flex-wrap:wrap;gap:7px}
+.company-rec-card{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:8px 10px;display:flex;align-items:flex-start;gap:8px;min-width:0;flex:1;min-width:160px}
+.company-rec-tag{padding:2px 7px;border-radius:4px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;flex-shrink:0;margin-top:1px}
+.rec-leader{background:rgba(16,185,129,.15);color:#34d399}
+.rec-emerging{background:rgba(99,102,241,.15);color:#818cf8}
+.rec-enabler{background:rgba(6,182,212,.15);color:var(--teal)}
+.company-rec-name{font-size:11px;font-weight:700;color:#fff;margin-bottom:2px}
+.company-rec-reason{font-size:10px;color:var(--muted);line-height:1.4}
+
+/* INDIA IMPACT */
+.india-panel{margin-top:12px;background:rgba(255,153,51,.04);border:1px solid rgba(255,153,51,.2);border-radius:8px;overflow:hidden}
+.india-panel-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid rgba(255,153,51,.15)}
+.india-panel-title{font-size:11px;font-weight:800;color:#fb923c;display:flex;align-items:center;gap:6px}
+.india-impact-badge{padding:2px 8px;border-radius:4px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.4px}
+.india-high{background:rgba(16,185,129,.15);color:#34d399}
+.india-medium{background:rgba(245,158,11,.15);color:#fbbf24}
+.india-low{background:rgba(100,116,139,.12);color:var(--muted)}
+.india-panel-body{padding:10px 14px}
+.india-why{font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:8px}
+.india-cos{display:flex;flex-wrap:wrap;gap:5px}
+.india-co-chip{padding:3px 9px;background:rgba(255,153,51,.08);border:1px solid rgba(255,153,51,.15);border-radius:4px;font-size:10px;font-weight:600;color:#fb923c;cursor:pointer;transition:background .15s}
+.india-co-chip:hover{background:rgba(255,153,51,.15)}
+.india-co-reason{font-size:10px;color:var(--muted)}
+
+/* PREMIUM GATE V2 */
+.premium-gate{position:relative;margin-top:10px;border-radius:8px;overflow:hidden}
+.premium-gate-blur{filter:blur(5px);pointer-events:none;user-select:none}
+.premium-gate-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,22,35,.1) 0%,rgba(15,22,35,.92) 45%,rgba(15,22,35,1) 100%);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:18px;gap:6px}
+.price-anchor{font-size:10px;color:var(--muted);font-style:italic;margin-bottom:4px}
+.unlock-cta{padding:9px 22px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:22px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;box-shadow:0 4px 16px rgba(99,102,241,.35);transition:all .2s;border:none}
+.unlock-cta:hover{transform:translateY(-1px);box-shadow:0 6px 22px rgba(99,102,241,.5)}
+
+/* LIVE INSIGHTS PANEL inside Opportunity */
+.live-insights-panel{background:rgba(6,182,212,.04);border:1px solid rgba(6,182,212,.2);border-radius:10px;padding:16px;margin-top:6px}
+.live-insights-empty{display:flex;align-items:center;gap:10px;padding:4px 0;font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="logo">
+    <div class="logo-title">ROBO INTEL</div>
+    <div class="logo-sub">Capital Intelligence Platform</div>
+  </div>
+  <nav class="nav">
+    <div class="nav-item active" onclick="navigate('opportunity')">
+      <div class="nav-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      </div>
+      Opportunity Engine
+    </div>
+    <div class="nav-item" onclick="navigate('market')">
+      <div class="nav-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      </div>
+      Market Structure
+    </div>
+    <div class="nav-item" onclick="navigate('capital')">
+      <div class="nav-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+      </div>
+      Capital Intelligence
+    </div>
+    <div class="nav-item" onclick="navigate('heatmap')">
+      <div class="nav-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+      </div>
+      Cross-Map Heatmap
+    </div>
+    <div class="nav-item" onclick="navigate('companies')">
+      <div class="nav-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      </div>
+      Company Intelligence
+    </div>
+    <div class="nav-item" onclick="navigate('query')">
+      <div class="nav-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </div>
+      Query Intelligence
+    </div>
+    <div style="height:1px;background:var(--border);margin:10px 0"></div>
+    <div style="padding:6px 18px 4px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">Live Intelligence</div>
+    <div class="nav-item" onclick="navigate('live')">
+      <div class="nav-icon" style="color:var(--teal)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      </div>
+      Live Signals
+    </div>
+    <div class="nav-item" onclick="navigate('momentum')">
+      <div class="nav-icon" style="color:var(--teal)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      </div>
+      Momentum Tracker
+    </div>
+    <div class="nav-item" onclick="navigate('fusion')">
+      <div class="nav-icon" style="color:var(--teal)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
+      </div>
+      Opportunity + Momentum
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="premium-badge">
+      PREMIUM INTELLIGENCE
+      <span>Investor-Grade Insights</span>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="live-dot"></div>
+      <div>
+        <div class="page-title" id="page-title">Opportunity Engine</div>
+        <div class="page-sub" id="page-sub">Auto-generated investment signals · 100 companies · 7 sectors</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="live-status" id="live-status">
+        <div class="dot-stale" id="live-dot"></div>
+        <span id="live-ts">Not yet fetched</span>
+      </div>
+      <button class="refresh-btn" id="refresh-btn" onclick="refreshIntelligence()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" id="refresh-icon"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+        Refresh Intelligence
+      </button>
+      <button id="auto-refresh-btn" onclick="toggleAutoRefresh()" style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:7px;border:1px solid rgba(99,102,241,.4);background:rgba(99,102,241,.08);color:#818cf8;font-size:11px;font-weight:600;cursor:pointer;transition:all .2s">
+        <span id="auto-refresh-dot" style="width:7px;height:7px;border-radius:50%;background:#475569;display:inline-block;transition:background .3s"></span>
+        <span id="auto-refresh-label">Auto OFF</span>
+        <span id="auto-refresh-countdown" style="color:#64748b;font-weight:400"></span>
+      </button>
+      <button class="btn btn-outline" onclick="openExport()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export
+      </button>
+      <button class="btn btn-primary" onclick="navigate('query')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Ask
+      </button>
+    </div>
+  </div>
+  <div class="content" id="content"></div>
+</div>
+
+</div>
+
+<!-- TOOLTIP -->
+<div class="tooltip" id="tooltip"></div>
+
+<!-- EXPORT MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-title">Export Intelligence Report</div>
+    <div class="modal-sub">Investor-ready summary · Robotics Intelligence Platform</div>
+    <div class="export-section" id="export-content"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeExport()">Close</button>
+      <button class="btn btn-primary" onclick="copyExport()">Copy to Clipboard</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===================== DATA =====================
+const COMPANIES = [
+  {name:"Boston Dynamics",country:"USA",industry:"Defence",vcl:"Manufacturers",sub:"Quadruped / Humanoid Robots",status:"Private",funding:"~$1.1B",fundingM:1100},
+  {name:"Shield AI",country:"USA",industry:"Defence",vcl:"Software & AI",sub:"Autonomous Military Drones",status:"Private",funding:"$2.8B Valuation",fundingM:2800},
+  {name:"AeroVironment",country:"USA",industry:"Defence",vcl:"Manufacturers",sub:"Military Drones / UAS",status:"Public",funding:"~$4.2B Market Cap",fundingM:4200},
+  {name:"Sarcos Technology",country:"USA",industry:"Defence",vcl:"Manufacturers",sub:"Exoskeletons",status:"Public",funding:"~$50M Market Cap",fundingM:50},
+  {name:"Ghost Robotics",country:"USA",industry:"Defence",vcl:"Manufacturers",sub:"Quadruped Robots",status:"Private",funding:"~$100M Funding",fundingM:100},
+  {name:"Anduril Industries",country:"USA",industry:"Defence",vcl:"Software & AI",sub:"Autonomous Defence Systems",status:"Private",funding:"$8.5B Valuation",fundingM:8500},
+  {name:"Leonardo S.p.A.",country:"Italy",industry:"Defence",vcl:"System Integrators",sub:"Unmanned Aerial Vehicles",status:"Public",funding:"~$7.5B Market Cap",fundingM:7500},
+  {name:"Elbit Systems",country:"Israel",industry:"Defence",vcl:"System Integrators",sub:"Military Ground Robots",status:"Public",funding:"~$9B Market Cap",fundingM:9000},
+  {name:"Roboteam",country:"Israel",industry:"Defence",vcl:"Manufacturers",sub:"Tactical Ground Robots",status:"Private",funding:"Undisclosed",fundingM:0},
+  {name:"Northrop Grumman",country:"USA",industry:"Defence",vcl:"System Integrators",sub:"Autonomous Systems / UAS",status:"Public",funding:"~$70B Market Cap",fundingM:70000},
+  {name:"QinetiQ",country:"UK",industry:"Defence",vcl:"Design",sub:"Military Ground Robots",status:"Public",funding:"~$2.5B Market Cap",fundingM:2500},
+  {name:"Milrem Robotics",country:"Estonia",industry:"Defence",vcl:"Manufacturers",sub:"Unmanned Ground Vehicles",status:"Private",funding:"Undisclosed",fundingM:0},
+  {name:"Kratos Defense",country:"USA",industry:"Defence",vcl:"Manufacturers",sub:"Tactical Drones / Autonomous UAVs",status:"Public",funding:"~$4.5B Market Cap",fundingM:4500},
+  {name:"Textron Systems",country:"USA",industry:"Defence",vcl:"System Integrators",sub:"Unmanned Ground & Air Systems",status:"Public",funding:"Part of Textron ~$14B",fundingM:14000},
+  {name:"Waymo",country:"USA",industry:"Automotive",vcl:"Software & AI",sub:"Autonomous Vehicles",status:"Private",funding:"~$45B Valuation",fundingM:45000},
+  {name:"Mobileye",country:"Israel",industry:"Automotive",vcl:"Semiconductor",sub:"Autonomous Driving Chips & Vision",status:"Public",funding:"~$16B Market Cap",fundingM:16000},
+  {name:"Cruise",country:"USA",industry:"Automotive",vcl:"Software & AI",sub:"Robotaxi / AV",status:"Private",funding:"$19B Peak Valuation",fundingM:19000},
+  {name:"Luminar Technologies",country:"USA",industry:"Automotive",vcl:"Components & Subsystems",sub:"LiDAR Sensors for AV",status:"Public",funding:"~$500M Market Cap",fundingM:500},
+  {name:"Velodyne Lidar (Ouster)",country:"USA",industry:"Automotive",vcl:"Components & Subsystems",sub:"LiDAR Sensors",status:"Public",funding:"~$200M Market Cap",fundingM:200},
+  {name:"Nuro",country:"USA",industry:"Automotive",vcl:"Design",sub:"Autonomous Delivery Vehicles",status:"Private",funding:"$8.6B Valuation",fundingM:8600},
+  {name:"Aurora Innovation",country:"USA",industry:"Automotive",vcl:"Software & AI",sub:"Autonomous Trucking",status:"Public",funding:"~$1.5B Market Cap",fundingM:1500},
+  {name:"Zoox (Amazon)",country:"USA",industry:"Automotive",vcl:"Design",sub:"Autonomous Robotaxi",status:"Private",funding:"$1.3B (Amazon acq.)",fundingM:1300},
+  {name:"NVIDIA",country:"USA",industry:"Automotive",vcl:"Semiconductor",sub:"AI Chips for Robotics & AV",status:"Public",funding:"~$2.3T Market Cap",fundingM:2300000},
+  {name:"Aptiv",country:"Ireland",industry:"Automotive",vcl:"Components & Subsystems",sub:"Vehicle Autonomy Systems",status:"Public",funding:"~$16B Market Cap",fundingM:16000},
+  {name:"Continental AG",country:"Germany",industry:"Automotive",vcl:"Components & Subsystems",sub:"ADAS & Autonomous Systems",status:"Public",funding:"~$14B Market Cap",fundingM:14000},
+  {name:"Pony.ai",country:"China/USA",industry:"Automotive",vcl:"Software & AI",sub:"Autonomous Vehicles",status:"Public",funding:"~$4B Market Cap",fundingM:4000},
+  {name:"WeRide",country:"China",industry:"Automotive",vcl:"Software & AI",sub:"Autonomous Vehicles / Robotaxi",status:"Public",funding:"~$5B Market Cap",fundingM:5000},
+  {name:"FANUC",country:"Japan",industry:"Automotive",vcl:"Manufacturers",sub:"Industrial Robots / CNC",status:"Public",funding:"~$25B Market Cap",fundingM:25000},
+  {name:"KUKA",country:"Germany",industry:"Automotive",vcl:"Manufacturers",sub:"Industrial Robots",status:"Public",funding:"Midea subsidiary ~$5B",fundingM:5000},
+  {name:"Universal Robots",country:"Denmark",industry:"Automotive",vcl:"Manufacturers",sub:"Collaborative Robots (Cobots)",status:"Private",funding:"Part of Teradyne ~$18B",fundingM:18000},
+  {name:"Siemens Digital Industries",country:"Germany",industry:"Automotive",vcl:"Integration & Services",sub:"Factory Automation & Robotics",status:"Public",funding:"~$150B Market Cap",fundingM:150000},
+  {name:"Intuitive Surgical",country:"USA",industry:"Healthcare",vcl:"Manufacturers",sub:"Surgical Robots",status:"Public",funding:"~$150B Market Cap",fundingM:150000},
+  {name:"Stryker (MAKO)",country:"USA",industry:"Healthcare",vcl:"System Integrators",sub:"Orthopaedic Surgical Robots",status:"Public",funding:"~$140B Market Cap",fundingM:140000},
+  {name:"Medtronic",country:"Ireland",industry:"Healthcare",vcl:"System Integrators",sub:"Surgical & Spinal Robots",status:"Public",funding:"~$90B Market Cap",fundingM:90000},
+  {name:"Accuray",country:"USA",industry:"Healthcare",vcl:"Manufacturers",sub:"Radiation Treatment Robots",status:"Public",funding:"~$200M Market Cap",fundingM:200},
+  {name:"Ekso Bionics",country:"USA",industry:"Healthcare",vcl:"Manufacturers",sub:"Rehabilitation Exoskeletons",status:"Public",funding:"~$30M Market Cap",fundingM:30},
+  {name:"ReWalk Robotics",country:"Israel",industry:"Healthcare",vcl:"Manufacturers",sub:"Exoskeleton / Rehabilitation",status:"Public",funding:"~$20M Market Cap",fundingM:20},
+  {name:"Hocoma",country:"Switzerland",industry:"Healthcare",vcl:"Manufacturers",sub:"Rehabilitation Robotics",status:"Private",funding:"Undisclosed",fundingM:0},
+  {name:"Vicarious Surgical",country:"USA",industry:"Healthcare",vcl:"Design",sub:"Miniaturized Surgical Robots",status:"Public",funding:"~$100M Market Cap",fundingM:100},
+  {name:"Auris Health (J&J)",country:"USA",industry:"Healthcare",vcl:"Manufacturers",sub:"Endoscopic Surgical Robots",status:"Private",funding:"$3.4B (J&J acq.)",fundingM:3400},
+  {name:"CMR Surgical",country:"UK",industry:"Healthcare",vcl:"Manufacturers",sub:"Surgical Robots",status:"Private",funding:"$600M+ Funding",fundingM:600},
+  {name:"Diligent Robotics",country:"USA",industry:"Healthcare",vcl:"Manufacturers",sub:"Hospital Service Robots",status:"Private",funding:"~$25M Funding",fundingM:25},
+  {name:"Xenex Disinfection",country:"USA",industry:"Healthcare",vcl:"Integration & Services",sub:"Disinfection Robots",status:"Private",funding:"~$200M Funding",fundingM:200},
+  {name:"Cyberdyne Inc.",country:"Japan",industry:"Healthcare",vcl:"Manufacturers",sub:"Medical Exoskeletons",status:"Public",funding:"~$300M Market Cap",fundingM:300},
+  {name:"Brainlab",country:"Germany",industry:"Healthcare",vcl:"Software & AI",sub:"Surgical Navigation & Robotics",status:"Private",funding:"Undisclosed",fundingM:0},
+  {name:"Amazon Robotics",country:"USA",industry:"Logistics",vcl:"Manufacturers",sub:"Warehouse Robots / AMR",status:"Private",funding:"Part of Amazon ~$2T",fundingM:2000000},
+  {name:"Ocado Group",country:"UK",industry:"Logistics",vcl:"System Integrators",sub:"Warehouse Automation",status:"Public",funding:"~$3B Market Cap",fundingM:3000},
+  {name:"Locus Robotics",country:"USA",industry:"Logistics",vcl:"Manufacturers",sub:"Autonomous Mobile Robots",status:"Private",funding:"~$400M Funding",fundingM:400},
+  {name:"6 River Systems (Shopify)",country:"USA",industry:"Logistics",vcl:"Manufacturers",sub:"Collaborative Warehouse Robots",status:"Private",funding:"$450M (Shopify acq.)",fundingM:450},
+  {name:"Geek+",country:"China",industry:"Logistics",vcl:"Manufacturers",sub:"Goods-to-Person Robots",status:"Private",funding:"$1.5B+ Valuation",fundingM:1500},
+  {name:"Hai Robotics",country:"China",industry:"Logistics",vcl:"Manufacturers",sub:"Autonomous Case-Handling Robots",status:"Private",funding:"~$600M Valuation",fundingM:600},
+  {name:"Zebra Technologies",country:"USA",industry:"Logistics",vcl:"Integration & Services",sub:"Warehouse Intelligence / AMR",status:"Public",funding:"~$13B Market Cap",fundingM:13000},
+  {name:"Symbotic",country:"USA",industry:"Logistics",vcl:"System Integrators",sub:"AI-Powered Warehouse Systems",status:"Public",funding:"~$18B Market Cap",fundingM:18000},
+  {name:"Exotec",country:"France",industry:"Logistics",vcl:"Manufacturers",sub:"3D Warehouse Robots",status:"Private",funding:"$2B Valuation",fundingM:2000},
+  {name:"Swisslog",country:"Switzerland",industry:"Logistics",vcl:"System Integrators",sub:"Automated Warehouse Systems",status:"Private",funding:"KUKA subsidiary",fundingM:0},
+  {name:"Körber Supply Chain",country:"Germany",industry:"Logistics",vcl:"Integration & Services",sub:"Warehouse Management & Robotics",status:"Private",funding:"Part of Körber AG",fundingM:0},
+  {name:"Plus One Robotics",country:"USA",industry:"Logistics",vcl:"Software & AI",sub:"AI Vision for Logistics Robots",status:"Private",funding:"~$50M Funding",fundingM:50},
+  {name:"Autostore",country:"Norway",industry:"Logistics",vcl:"Manufacturers",sub:"Grid-Based Warehouse Robots",status:"Public",funding:"~$5B Market Cap",fundingM:5000},
+  {name:"Berkshire Grey",country:"USA",industry:"Logistics",vcl:"System Integrators",sub:"AI-Powered Robotic Fulfilment",status:"Public",funding:"~$200M Market Cap",fundingM:200},
+  {name:"Rapyuta Robotics",country:"Japan/Switzerland",industry:"Logistics",vcl:"Software & AI",sub:"Cloud Robotics Platform",status:"Private",funding:"~$100M Funding",fundingM:100},
+  {name:"ABB Robotics",country:"Switzerland",industry:"Logistics",vcl:"Manufacturers",sub:"Industrial Robots / Cobots",status:"Public",funding:"Part of ABB ~$70B",fundingM:70000},
+  {name:"Cognex",country:"USA",industry:"Logistics",vcl:"Components & Subsystems",sub:"Machine Vision Systems",status:"Public",funding:"~$6B Market Cap",fundingM:6000},
+  {name:"Rockwell Automation",country:"USA",industry:"Logistics",vcl:"Integration & Services",sub:"Industrial Automation & Robotics",status:"Public",funding:"~$30B Market Cap",fundingM:30000},
+  {name:"Agility Robotics",country:"USA",industry:"Logistics",vcl:"Manufacturers",sub:"Humanoid Robots",status:"Private",funding:"~$400M Funding",fundingM:400},
+  {name:"Apptronik",country:"USA",industry:"Logistics",vcl:"Manufacturers",sub:"Humanoid Robots",status:"Private",funding:"~$350M Funding",fundingM:350},
+  {name:"John Deere (Blue River)",country:"USA",industry:"Agriculture",vcl:"System Integrators",sub:"Precision Agriculture Robots",status:"Public",funding:"~$110B Market Cap",fundingM:110000},
+  {name:"Trimble Agriculture",country:"USA",industry:"Agriculture",vcl:"Software & AI",sub:"Precision Farming Software & Robotics",status:"Public",funding:"~$17B Market Cap",fundingM:17000},
+  {name:"AgJunction (Hexagon)",country:"Canada",industry:"Agriculture",vcl:"Components & Subsystems",sub:"GNSS / Autonomy for Farm Equipment",status:"Private",funding:"Hexagon subsidiary",fundingM:0},
+  {name:"FarmWise",country:"USA",industry:"Agriculture",vcl:"Manufacturers",sub:"Autonomous Weeding Robots",status:"Private",funding:"~$50M Funding",fundingM:50},
+  {name:"Iron Ox",country:"USA",industry:"Agriculture",vcl:"System Integrators",sub:"Autonomous Indoor Farming",status:"Private",funding:"~$100M Funding",fundingM:100},
+  {name:"Naïo Technologies",country:"France",industry:"Agriculture",vcl:"Manufacturers",sub:"Autonomous Farm Robots",status:"Private",funding:"~€40M Funding",fundingM:40},
+  {name:"Harvest Automation",country:"USA",industry:"Agriculture",vcl:"Manufacturers",sub:"Horticultural Robots",status:"Private",funding:"Undisclosed",fundingM:0},
+  {name:"Agrobot",country:"Spain",industry:"Agriculture",vcl:"Manufacturers",sub:"Strawberry Harvesting Robots",status:"Private",funding:"Undisclosed",fundingM:0},
+  {name:"Agreenculture",country:"France",industry:"Agriculture",vcl:"Manufacturers",sub:"Autonomous Tractors",status:"Private",funding:"Undisclosed",fundingM:0},
+  {name:"Monarch Tractor",country:"USA",industry:"Agriculture",vcl:"Manufacturers",sub:"Electric Autonomous Tractors",status:"Private",funding:"~$140M Funding",fundingM:140},
+  {name:"Fendt (AGCO)",country:"Germany",industry:"Agriculture",vcl:"Manufacturers",sub:"Autonomous Farm Equipment",status:"Public",funding:"Part of AGCO ~$7B",fundingM:7000},
+  {name:"Tertill",country:"USA",industry:"Agriculture",vcl:"Manufacturers",sub:"Home Garden Weeding Robots",status:"Private",funding:"~$5M Funding",fundingM:5},
+  {name:"Burro",country:"USA",industry:"Agriculture",vcl:"Manufacturers",sub:"Autonomous Farm Transport Robots",status:"Private",funding:"~$25M Funding",fundingM:25},
+  {name:"SpaceX",country:"USA",industry:"Space",vcl:"Manufacturers",sub:"Rocket / Spacecraft Systems",status:"Private",funding:"~$350B Valuation",fundingM:350000},
+  {name:"Astrobotic",country:"USA",industry:"Space",vcl:"Design",sub:"Lunar Landers & Robotics",status:"Private",funding:"~$250M Funding",fundingM:250},
+  {name:"Maxar Technologies",country:"USA",industry:"Space",vcl:"Components & Subsystems",sub:"Satellite Robotics / Space Infrastructure",status:"Public",funding:"$6.4B (Advent acq.)",fundingM:6400},
+  {name:"Honeybee Robotics",country:"USA",industry:"Space",vcl:"Design",sub:"Planetary Robotics",status:"Private",funding:"Part of Blue Origin",fundingM:0},
+  {name:"ispace",country:"Japan",industry:"Space",vcl:"Manufacturers",sub:"Lunar Rovers & Landers",status:"Public",funding:"~$200M Market Cap",fundingM:200},
+  {name:"Starfish Space",country:"USA",industry:"Space",vcl:"Design",sub:"On-Orbit Satellite Servicing",status:"Private",funding:"~$30M Funding",fundingM:30},
+  {name:"Motiv Space Systems",country:"USA",industry:"Space",vcl:"Components & Subsystems",sub:"Space Robotic Arms & Actuators",status:"Private",funding:"Undisclosed",fundingM:0},
+  {name:"Rocket Lab",country:"USA/NZ",industry:"Space",vcl:"Manufacturers",sub:"Small Launch Vehicles & Spacecraft",status:"Public",funding:"~$3B Market Cap",fundingM:3000},
+  {name:"iRobot (Amazon)",country:"USA",industry:"Consumer",vcl:"Manufacturers",sub:"Home Cleaning Robots",status:"Private",funding:"$1.7B (Amazon acq.)",fundingM:1700},
+  {name:"Ecovacs Robotics",country:"China",industry:"Consumer",vcl:"Manufacturers",sub:"Home Cleaning & Service Robots",status:"Public",funding:"~$1.5B Market Cap",fundingM:1500},
+  {name:"Roborock",country:"China",industry:"Consumer",vcl:"Manufacturers",sub:"Smart Home Cleaning Robots",status:"Public",funding:"~$2B Market Cap",fundingM:2000},
+  {name:"Dyson",country:"UK",industry:"Consumer",vcl:"Design",sub:"Home & Future Humanoid Robots",status:"Private",funding:"~$20B Valuation",fundingM:20000},
+  {name:"Sony (AIBO)",country:"Japan",industry:"Consumer",vcl:"Manufacturers",sub:"Entertainment / Companion Robots",status:"Public",funding:"Part of Sony ~$100B",fundingM:100000},
+  {name:"Hanson Robotics",country:"Hong Kong",industry:"Consumer",vcl:"Design",sub:"Social / Humanoid Robots",status:"Private",funding:"Undisclosed",fundingM:0},
+  {name:"Segway-Ninebot",country:"China",industry:"Consumer",vcl:"Manufacturers",sub:"Personal Mobility & Delivery Robots",status:"Public",funding:"~$3B Market Cap",fundingM:3000},
+  {name:"Embodied Inc.",country:"USA",industry:"Consumer",vcl:"Design",sub:"Social Companion Robots",status:"Private",funding:"~$30M Funding",fundingM:30},
+  {name:"Paro (AIST)",country:"Japan",industry:"Consumer",vcl:"Design",sub:"Therapeutic Companion Robots",status:"Public/Govt",funding:"Government R&D",fundingM:0},
+  {name:"Mayfield Robotics (Bosch)",country:"USA",industry:"Consumer",vcl:"Manufacturers",sub:"Home Companion Robots",status:"Private",funding:"Bosch subsidiary",fundingM:0},
+  {name:"Qualcomm",country:"USA",industry:"Consumer",vcl:"Semiconductor",sub:"Edge AI Chips for Robotics",status:"Public",funding:"~$170B Market Cap",fundingM:170000},
+  {name:"Figure AI",country:"USA",industry:"Consumer",vcl:"Manufacturers",sub:"Humanoid Robots",status:"Private",funding:"$2.6B Valuation",fundingM:2600},
+  {name:"1X Technologies",country:"Norway",industry:"Consumer",vcl:"Manufacturers",sub:"Humanoid Robots",status:"Private",funding:"~$100M Funding",fundingM:100},
+  {name:"Unitree Robotics",country:"China",industry:"Consumer",vcl:"Manufacturers",sub:"Quadruped & Humanoid Robots",status:"Private",funding:"~$1B Valuation",fundingM:1000}
+];
+
+// Cross-matrix: rows=industries, cols=value chain layers
+const INDUSTRIES = ["Agriculture","Automotive","Consumer","Defence","Healthcare","Logistics","Space"];
+const VCL = ["Manufacturers","System Integrators","Software & AI","Design","Components & Subsystems","Integration & Services","Semiconductor"];
+
+// Precomputed matrix [industry][vcl] = count
+const MATRIX = {};
+INDUSTRIES.forEach(ind => {
+  MATRIX[ind] = {};
+  VCL.forEach(v => { MATRIX[ind][v] = 0; });
+});
+COMPANIES.forEach(c => {
+  if(MATRIX[c.industry] && MATRIX[c.industry][c.vcl] !== undefined)
+    MATRIX[c.industry][c.vcl]++;
+});
+
+// Funding by industry (capped at 500B to avoid NVIDIA/Amazon distortion for viz)
+function getIndustryCap(ind, cap=500000) {
+  return COMPANIES.filter(c=>c.industry===ind).reduce((s,c)=>s+Math.min(c.fundingM,cap),0);
+}
+
+// Gap score: proportion of zero cells
+function gapScore(ind) {
+  const zeros = VCL.filter(v=>MATRIX[ind][v]===0).length;
+  return zeros / VCL.length;
+}
+
+
+const QUERIES = [
+  {label:"Which sectors are underfunded?", key:"underfunded"},
+  {label:"Where is competition lowest?", key:"lowcomp"},
+  {label:"Where should capital flow?", key:"invest"},
+  {label:"Which value chain has the most gaps?", key:"gaps"},
+  {label:"What is emerging right now?", key:"watch"},
+  {label:"Where is it too late to enter?", key:"saturated"}
+];
+
+// ===================== STATE =====================
+let currentTab = 'opportunity';
+let companyFilter = 'All';
+let companySearch = '';
+let selectedSector = 'All';
+let charts = {};
+
+// ===================== LIVE STATE =====================
+const API_BASE = 'http://localhost:3000';
+let liveData = { articles: [], insights: [], momentum: {}, generatedAt: null };
+let isRefreshing = false;
+let autoRefreshOn = false;
+let autoRefreshTimer = null;
+let autoRefreshCountdownInterval = null;
+let autoRefreshNextAt = null;          // Date when next refresh fires
+let prevArticleTitles = new Set();     // track which articles are "new"
+const AUTO_REFRESH_INTERVAL_MS = 20 * 60 * 1000; // 20 minutes
+
+// ===================== NAVIGATE =====================
+function navigate(tab) {
+  currentTab = tab;
+  const allTabs = ['opportunity','market','capital','heatmap','companies','query','live','momentum','fusion'];
+  document.querySelectorAll('.nav-item').forEach((el,i) => {
+    el.classList.toggle('active', allTabs[i] === tab);
+  });
+  const titles = {
+    opportunity: ['Opportunity Engine','Live AI insights from GNews · Claude-powered · click Refresh to load'],
+    market:      ['Market Structure','Distribution analysis · Industry & Value Chain breakdown'],
+    capital:     ['Capital Intelligence','Where funding is concentrated and where it is missing'],
+    heatmap:     ['Cross-Map Heatmap','Industry × Value Chain density · Opportunity zones highlighted'],
+    companies:   ['Company Intelligence','Positioning · Competitor mapping · 100 tracked companies'],
+    query:       ['Query Intelligence','Ask natural language questions · Get direct answers + data'],
+    live:        ['Live Signals','Real-time robotics news · AI-tagged by sector & value chain'],
+    momentum:    ['Momentum Tracker','Which sectors are gaining signal volume right now'],
+    fusion:      ['Opportunity + Momentum','Structural gaps fused with live market signals']
+  };
+  document.getElementById('page-title').textContent = titles[tab][0];
+  document.getElementById('page-sub').textContent = titles[tab][1];
+  Object.values(charts).forEach(c => { try{c.destroy()}catch(e){} });
+  charts = {};
+  const content = document.getElementById('content');
+  content.innerHTML = '';
+  if(tab==='opportunity') renderOpportunity();
+  else if(tab==='market') renderMarket();
+  else if(tab==='capital') renderCapital();
+  else if(tab==='heatmap') renderHeatmap();
+  else if(tab==='companies') renderCompanies();
+  else if(tab==='query') renderQuery();
+  else if(tab==='live') renderLive();
+  else if(tab==='momentum') renderMomentum();
+  else if(tab==='fusion') renderFusion();
+}
+
+// ===================== AUTO-REFRESH ENGINE =====================
+function updateAutoRefreshUI() {
+  const btn = document.getElementById('auto-refresh-btn');
+  const dot = document.getElementById('auto-refresh-dot');
+  const label = document.getElementById('auto-refresh-label');
+  if (!btn) return;
+  if (autoRefreshOn) {
+    btn.style.borderColor = 'rgba(16,185,129,.5)';
+    btn.style.background = 'rgba(16,185,129,.1)';
+    btn.style.color = '#34d399';
+    dot.style.background = '#10b981';
+    label.textContent = 'Auto ON';
+  } else {
+    btn.style.borderColor = 'rgba(99,102,241,.4)';
+    btn.style.background = 'rgba(99,102,241,.08)';
+    btn.style.color = '#818cf8';
+    dot.style.background = '#475569';
+    label.textContent = 'Auto OFF';
+    const cd = document.getElementById('auto-refresh-countdown');
+    if (cd) cd.textContent = '';
+  }
+}
+
+function startCountdown() {
+  if (autoRefreshCountdownInterval) clearInterval(autoRefreshCountdownInterval);
+  autoRefreshCountdownInterval = setInterval(() => {
+    const cd = document.getElementById('auto-refresh-countdown');
+    if (!cd || !autoRefreshNextAt) return;
+    const remaining = Math.max(0, autoRefreshNextAt - Date.now());
+    const m = Math.floor(remaining / 60000);
+    const s = Math.floor((remaining % 60000) / 1000);
+    cd.textContent = `${m}:${s.toString().padStart(2,'0')}`;
+  }, 1000);
+}
+
+async function toggleAutoRefresh() {
+  autoRefreshOn = !autoRefreshOn;
+
+  // Tell server
+  try {
+    await fetch(`${API_BASE}/api/auto-refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enable: autoRefreshOn })
+    });
+  } catch(e) { /* server may be restarting */ }
+
+  if (autoRefreshOn) {
+    // Snapshot current article titles so we can mark new ones after next refresh
+    prevArticleTitles = new Set(liveData.articles.map(a => a.title));
+    // Schedule client-side refresh every 20 min
+    autoRefreshNextAt = Date.now() + AUTO_REFRESH_INTERVAL_MS;
+    autoRefreshTimer = setInterval(async () => {
+      await refreshIntelligence();
+      autoRefreshNextAt = Date.now() + AUTO_REFRESH_INTERVAL_MS;
+    }, AUTO_REFRESH_INTERVAL_MS);
+    startCountdown();
+    showToast('Auto-refresh ON — updates every 20 min');
+  } else {
+    if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
+    if (autoRefreshCountdownInterval) { clearInterval(autoRefreshCountdownInterval); autoRefreshCountdownInterval = null; }
+    autoRefreshNextAt = null;
+    showToast('Auto-refresh OFF');
+  }
+  updateAutoRefreshUI();
+}
+
+// ===================== REFRESH ENGINE =====================
+async function refreshIntelligence() {
+  if (isRefreshing) return;
+  isRefreshing = true;
+  const btn = document.getElementById('refresh-btn');
+  const dot = document.getElementById('live-dot');
+  const ts  = document.getElementById('live-ts');
+  btn.classList.add('loading');
+  btn.querySelector('span') && (btn.querySelector('span').textContent = 'Fetching intelligence...');
+  btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="animation:spin 1s linear infinite"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg> Fetching intelligence…`;
+  ts.textContent = 'Refreshing…';
+  dot.className = 'dot-stale';
+
+  try {
+    // Snapshot titles before refresh to detect new articles
+    prevArticleTitles = new Set(liveData.articles.map(a => a.title));
+
+    const res = await fetch(`${API_BASE}/api/refresh`, { method: 'POST' });
+    if (!res.ok) throw new Error(`Server returned ${res.status}`);
+    liveData = await res.json();
+    const t = new Date(liveData.generatedAt);
+    ts.textContent = 'Updated ' + t.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    dot.className = 'dot-live';
+
+    // Count genuinely new articles
+    const newCount = liveData.articles.filter(a => !prevArticleTitles.has(a.title)).length;
+
+    // Re-render current tab
+    if (['live','momentum','fusion'].includes(currentTab)) {
+      navigate(currentTab);
+    } else if (currentTab === 'opportunity') {
+      renderOpportunity();
+    }
+    loadDebugPanel();
+    const newLabel = newCount > 0 ? ` · ${newCount} new articles` : '';
+    showToast('Intelligence refreshed — ' + liveData.articles.length + ' signals · ' + liveData.insights.length + ' AI insights' + newLabel);
+  } catch(e) {
+    ts.textContent = 'Server offline';
+    dot.className = 'dot-stale';
+    showToast('⚠ Backend offline. Run: node server.js', true);
+  } finally {
+    isRefreshing = false;
+    btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg> Refresh Intelligence`;
+    btn.classList.remove('loading');
+  }
+}
+
+function showToast(msg, warn=false) {
+  let t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.style.cssText = 'position:fixed;bottom:24px;right:24px;padding:12px 18px;border-radius:9px;font-size:12px;font-weight:600;z-index:999;transition:opacity .3s;max-width:340px;box-shadow:0 8px 24px rgba(0,0,0,.4)';
+    document.body.appendChild(t);
+  }
+  t.style.background = warn ? 'rgba(239,68,68,.15)' : 'rgba(16,185,129,.15)';
+  t.style.border = warn ? '1px solid rgba(239,68,68,.4)' : '1px solid rgba(16,185,129,.4)';
+  t.style.color = warn ? '#f87171' : '#34d399';
+  t.textContent = msg;
+  t.style.opacity = '1';
+  setTimeout(() => { t.style.opacity = '0'; }, 3500);
+}
+
+// ===================== LIVE SIGNALS =====================
+function renderLive() {
+  const c = document.getElementById('content');
+  if (!liveData.articles.length) {
+    c.innerHTML = renderOfflineBanner('Live Signals');
+    return;
+  }
+  const arts = liveData.articles;
+  const byIndustry = {};
+  arts.forEach(a => {
+    if (!byIndustry[a.industry]) byIndustry[a.industry] = [];
+    byIndustry[a.industry].push(a);
+  });
+
+  const tagColor = {invest:'#34d399', watch:'#fbbf24', saturated:'#f87171'};
+  const dotColor = {invest:'#10b981', watch:'#f59e0b', saturated:'#ef4444', General:'#6366f1'};
+  const industryColors = {Defence:'#ef4444',Healthcare:'#10b981',Logistics:'#6366f1',Automotive:'#f59e0b',Agriculture:'#06b6d4',Space:'#8b5cf6',Consumer:'#ec4899',General:'#64748b'};
+
+  c.innerHTML = `
+  <div class="grid grid-4" style="margin-bottom:20px">
+    <div class="card card-sm"><div class="card-title">Live Articles</div><div class="card-value" style="color:var(--teal)">${arts.length}</div><div class="card-delta">Fetched this cycle</div></div>
+    <div class="card card-sm"><div class="card-title">Funding Events</div><div class="card-value" style="color:#34d399">${arts.filter(a=>a.signal==='invest').length}</div><div class="card-delta">Investment signals detected</div></div>
+    <div class="card card-sm"><div class="card-title">Sectors Active</div><div class="card-value">${Object.keys(byIndustry).filter(k=>k!=='General').length}</div><div class="card-delta">Industries in news cycle</div></div>
+    <div class="card card-sm"><div class="card-title">Last Refresh</div><div class="card-value" style="font-size:16px;color:#818cf8">${liveData.generatedAt ? new Date(liveData.generatedAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : '—'}</div><div class="card-delta">All sources combined</div></div>
+  </div>
+
+  <div class="grid grid-2" style="margin-bottom:20px">
+    <div class="card">
+      <div class="card-header"><div class="card-h">AI-Generated Live Insights</div><span class="tag tag-invest" style="font-size:10px">Claude-Powered</span></div>
+      <div style="display:flex;flex-direction:column;gap:12px" id="ai-insights-panel">
+        ${liveData.insights.length ? liveData.insights.map(ins=>`
+        <div class="signal-card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <span class="signal-badge ${ins.tag}">${ins.tag==='invest'?'🟢 INVEST':ins.tag==='watch'?'🟡 WATCH':'🔴 SATURATED'}</span>
+            <div style="display:flex;gap:6px">
+              <span class="signal-tag">${ins.sector||''}</span>
+              <span class="signal-tag" style="background:rgba(6,182,212,.1);color:var(--teal)">${ins.momentum||''} momentum</span>
+            </div>
+          </div>
+          <div class="signal-title">${ins.title}</div>
+          <div class="signal-body">${ins.what||''}</div>
+          <div class="signal-body" style="margin-top:4px;color:#94a3b8">${ins.why||''}</div>
+          <div class="signal-action">→ ${ins.action||''}</div>
+        </div>`).join('') : '<div class="empty">Click Refresh Intelligence to generate AI insights</div>'}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-h">Raw Signal Feed</div><span style="font-size:11px;color:var(--muted)">${arts.length} articles</span></div>
+      <div style="max-height:520px;overflow-y:auto">
+        ${arts.map(a=>{const isNew = prevArticleTitles.size > 0 && !prevArticleTitles.has(a.title); return `
+        <div class="article-item" style="${isNew ? 'border-left:2px solid #10b981;background:rgba(16,185,129,.04);' : ''}">
+          <div class="article-dot" style="background:${dotColor[a.signal]||'#6366f1'}"></div>
+          <div class="article-content">
+            <div class="article-title" style="display:flex;align-items:center;gap:6px">
+              <a href="${a.link}" target="_blank">${a.title}</a>
+              ${isNew ? `<span style="font-size:9px;font-weight:700;color:#10b981;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);padding:1px 5px;border-radius:4px;letter-spacing:.5px;flex-shrink:0">NEW</span>` : ''}
+            </div>
+            <div class="article-meta">
+              <span style="color:${industryColors[a.industry]||'#64748b'}">${a.industry}</span>
+              <span>${a.vcl}</span>
+              <span>${a.source}</span>
+            </div>
+            ${a.summary ? `<div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5">${a.summary.slice(0,120)}…</div>` : ''}
+          </div>
+        </div>`}).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ===================== MOMENTUM TRACKER =====================
+function renderMomentum() {
+  const c = document.getElementById('content');
+  if (!liveData.articles.length) {
+    c.innerHTML = renderOfflineBanner('Momentum Tracker');
+    return;
+  }
+  const mom = liveData.momentum;
+  const industries = Object.entries(mom).filter(([k,v])=>v.count>0).sort((a,b)=>b[1].count-a[1].count);
+  const max = industries.length ? industries[0][1].count : 1;
+  const barColors = ['#10b981','#34d399','#6366f1','#818cf8','#f59e0b','#fbbf24','#06b6d4','#64748b'];
+  const trendLabel = (n) => n>=4 ? ['hot','🔥 HOT'] : n>=2 ? ['warm','📈 ACTIVE'] : ['cold','💤 LOW'];
+
+  c.innerHTML = `
+  <div class="grid grid-3" style="margin-bottom:20px">
+    <div class="card card-sm"><div class="card-title">Hottest Sector</div><div class="card-value" style="font-size:18px;color:#34d399">${industries[0]?.[0]||'—'}</div><div class="card-delta">${industries[0]?.[1].count||0} signals this cycle</div></div>
+    <div class="card card-sm"><div class="card-title">Funding Events</div><div class="card-value" style="color:#818cf8">${Object.values(mom).reduce((s,v)=>s+v.invest,0)}</div><div class="card-delta">Investment signals detected</div></div>
+    <div class="card card-sm"><div class="card-title">Total Signals</div><div class="card-value" style="color:var(--teal)">${liveData.articles.length}</div><div class="card-delta">Across all sectors</div></div>
+  </div>
+
+  <div class="grid grid-2" style="margin-bottom:20px">
+    <div class="card">
+      <div class="card-header"><div class="card-h">Signal Volume by Sector</div></div>
+      ${industries.map(([ind,v],i)=>{
+        const [tcls, tlabel] = trendLabel(v.count);
+        return `<div class="momentum-row">
+          <div class="momentum-label">${ind}</div>
+          <div class="momentum-bar-track"><div class="momentum-bar-fill" style="width:${Math.round(v.count/max*100)}%;background:${barColors[i]||'#6366f1'}"></div></div>
+          <div class="momentum-count">${v.count}</div>
+          <span class="momentum-trend trend-${tcls}">${tlabel}</span>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-h">Signal Breakdown</div><span style="font-size:11px;color:var(--muted)">Invest vs Watch</span></div>
+      <div class="chart-wrap"><canvas id="chart-mom"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-h">Recent Headlines by Sector</div></div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:4px">
+      ${industries.slice(0,6).map(([ind,v])=>`
+      <div style="background:var(--surface2);border-radius:8px;padding:12px">
+        <div style="font-size:11px;font-weight:700;color:var(--accent2);margin-bottom:8px">${ind} <span style="color:var(--muted);font-weight:400">(${v.count} signals)</span></div>
+        ${v.articles.slice(0,3).map(t=>`<div style="font-size:11px;color:var(--muted);padding:3px 0;border-bottom:1px solid rgba(30,45,69,.3);line-height:1.4">${t.slice(0,70)}${t.length>70?'…':''}</div>`).join('')}
+      </div>`).join('')}
+    </div>
+  </div>`;
+
+  const labels = industries.map(([k])=>k);
+  const investData = industries.map(([,v])=>v.invest);
+  const watchData = industries.map(([,v])=>v.watch);
+  charts.mom = new Chart(document.getElementById('chart-mom'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {label:'Invest Signals',data:investData,backgroundColor:'rgba(16,185,129,.7)',borderRadius:4,borderSkipped:false},
+        {label:'Watch Signals',data:watchData,backgroundColor:'rgba(99,102,241,.5)',borderRadius:4,borderSkipped:false}
+      ]
+    },
+    options: {
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#64748b',font:{size:11}}},tooltip:{backgroundColor:'#1e293b',borderColor:'#1e2d45',borderWidth:1}},
+      scales:{x:{grid:{display:false},ticks:{color:'#64748b',font:{size:10}}},y:{grid:{color:'rgba(30,45,69,.5)'},ticks:{color:'#64748b',font:{size:10}},stacked:false}}
+    }
+  });
+}
+
+// ===================== FUSION VIEW =====================
+function renderFusion() {
+  const c = document.getElementById('content');
+
+  const hasLive = liveData.articles.length > 0;
+  const mom = liveData.momentum;
+
+  // Score each industry: structural_gap_score * momentum_boost
+  const fusionScores = INDUSTRIES.map(ind => {
+    const gap = gapScore(ind); // 0-1, higher = more opportunity
+    const liveCount = mom[ind]?.count || 0;
+    const investBoost = mom[ind]?.invest || 0;
+    const momentumScore = Math.min(liveCount / 5, 1); // normalize 0-1
+    const conviction = gap * 0.6 + momentumScore * 0.3 + (investBoost > 0 ? 0.1 : 0);
+    const level = conviction > 0.5 ? 'high' : conviction > 0.25 ? 'medium' : gap > 0 ? 'low' : 'gap';
+    return { ind, gap: Math.round(gap*100), liveCount, investBoost, conviction: Math.round(conviction*100), level };
+  }).sort((a,b) => b.conviction - a.conviction);
+
+  const levelLabel = { high:'🟢 HIGH CONVICTION', medium:'🟡 WATCH', low:'⬜ MONITOR', gap:'🔴 SATURATED' };
+  const levelClass = { high:'fusion-high', medium:'fusion-medium', low:'fusion-low', gap:'fusion-gap' };
+  const levelColor = { high:'#34d399', medium:'#fbbf24', low:'#818cf8', gap:'#f87171' };
+
+  c.innerHTML = `
+  <div style="margin-bottom:18px;padding:14px 18px;background:rgba(6,182,212,.06);border:1px solid rgba(6,182,212,.2);border-radius:10px;font-size:12px;color:var(--teal)">
+    <strong>Intelligence Fusion:</strong> Structural opportunity gaps (Excel dataset) overlaid with live market signals (news) to produce conviction-weighted sector scores.
+    ${!hasLive ? ' <strong style="color:#fbbf24">⚡ Click Refresh Intelligence to load live signals and boost accuracy.</strong>' : ''}
+  </div>
+
+  <div class="grid grid-4" style="margin-bottom:20px">
+    ${fusionScores.slice(0,4).map(s=>`
+    <div class="card card-sm" style="border-color:${levelColor[s.level]}40">
+      <div class="card-title">${s.ind}</div>
+      <div class="card-value" style="color:${levelColor[s.level]};font-size:22px">${s.conviction}%</div>
+      <div class="card-delta">${levelLabel[s.level]}</div>
+    </div>`).join('')}
+  </div>
+
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-header">
+      <div class="card-h">Conviction Map: All Sectors</div>
+      <span style="font-size:11px;color:var(--muted)">Structural gap × Live momentum = Conviction score</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(${INDUSTRIES.length},1fr);gap:10px;margin-top:4px">
+      ${fusionScores.map(s=>`
+      <div class="fusion-cell ${levelClass[s.level]}" title="${s.ind}: ${s.conviction}% conviction">
+        <div style="font-size:11px;font-weight:700;color:#fff;margin-bottom:8px">${s.ind}</div>
+        <div style="font-size:22px;font-weight:800;color:${levelColor[s.level]};margin-bottom:6px">${s.conviction}%</div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Gap: ${s.gap}%</div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:6px">Live: ${s.liveCount} signals</div>
+        <div style="font-size:10px;font-weight:800;color:${levelColor[s.level]}">${levelLabel[s.level]}</div>
+      </div>`).join('')}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-h">Fused AI Insights — Act Now</div>
+      <span class="tag tag-invest" style="font-size:10px">Structural × Live</span>
+    </div>
+    ${liveData.insights.length ? `
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:4px">
+      ${liveData.insights.filter(i=>i.tag==='invest').slice(0,3).map(ins=>{
+        const fs = fusionScores.find(s=>s.ind===ins.sector);
+        return `<div class="signal-card invest" style="border-left:3px solid #10b981">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                <span class="signal-badge invest">🟢 INVEST</span>
+                <span class="signal-tag">${ins.sector}</span>
+                ${fs ? `<span class="signal-tag" style="background:rgba(16,185,129,.15);color:#34d399">${fs.conviction}% conviction</span>` : ''}
+              </div>
+              <div class="signal-title">${ins.title}</div>
+              <div class="signal-body" style="margin-top:4px">${ins.what}</div>
+              <div class="signal-body" style="margin-top:4px;color:#94a3b8">${ins.why}</div>
+              <div class="signal-action">→ ${ins.action}</div>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>` : `
+    <div class="empty" style="padding:30px">
+      <div style="font-size:20px;margin-bottom:8px">🔄</div>
+      <div style="font-weight:600;color:var(--text);margin-bottom:4px">Live intelligence not yet loaded</div>
+      <div style="font-size:12px">Click <strong style="color:var(--teal)">Refresh Intelligence</strong> to fuse live signals with structural data</div>
+    </div>`}
+  </div>`;
+}
+
+// ===================== OFFLINE BANNER =====================
+function renderOfflineBanner(section) {
+  return `
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;text-align:center;gap:16px">
+    <div style="width:60px;height:60px;border-radius:50%;background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.3);display:flex;align-items:center;justify-content:center">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+    </div>
+    <div>
+      <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:6px">${section} — No Live Data Yet</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:16px">Start the backend and click Refresh Intelligence to fetch real-time signals.</div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 18px;font-family:monospace;font-size:12px;color:var(--teal);display:inline-block">node server.js</div>
+    </div>
+    <button class="btn btn-primary" onclick="refreshIntelligence()" style="margin-top:8px">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+      Refresh Intelligence
+    </button>
+  </div>`;
+}
+
+// ===================== OPPORTUNITY ENGINE =====================
+function changeSector(sector) {
+  selectedSector = sector;
+  renderOpportunity();
+}
+
+async function loadDebugPanel() {
+  const panel = document.getElementById('debug-panel');
+  if (!panel) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/status`);
+    if (!res.ok) throw new Error('offline');
+    const d = await res.json();
+    const keyBadge = k => k === 'NOT SET'
+      ? `<span style="color:var(--red);font-weight:600">NOT SET</span>`
+      : `<span style="color:#4ade80;font-weight:600">${k} ✓</span>`;
+    panel.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div style="grid-column:1/-1"><span style="color:var(--text);font-weight:700">RSS Endpoint</span><br><span style="font-size:11px">${d.newsEndpoint}</span></div>
+        <div><span style="color:var(--text);font-weight:700">Anthropic API Key</span><br>${keyBadge(d.apiKey)}</div>
+        <div><span style="color:var(--text);font-weight:700">GNews Key</span><br>${keyBadge(d.gNewsKey)}</div>
+        <div><span style="color:var(--text);font-weight:700">NewsData Key</span><br>${keyBadge(d.newsDataKey)}</div>
+        <div><span style="color:var(--text);font-weight:700">Sources Active</span><br>${d.feedCount} APIs configured</div>
+        <div><span style="color:var(--text);font-weight:700">Articles Fetched</span><br>${d.articlesFetched}</div>
+        <div><span style="color:var(--text);font-weight:700">Last Fetch</span><br>${d.lastFetch || 'Never — click Refresh'}</div>
+        <div><span style="color:var(--text);font-weight:700">Data Source</span><br>${d.source}</div>
+      </div>`;
+  } catch(e) {
+    panel.innerHTML = `<span style="color:var(--red)">&#9888; Server offline — run: node server.js</span>`;
+  }
+}
+
+function renderOpportunity() {
+  const c = document.getElementById('content');
+  const SECTORS = ['All','Agriculture','Automotive','Consumer','Defence','Healthcare','Logistics','Space'];
+
+  const allInsights = liveData.insights || [];
+  const filteredInsights = selectedSector === 'All'
+    ? allInsights
+    : allInsights.filter(i => i.sector === selectedSector);
+
+  const hasLive = allInsights.length > 0;
+  const sectorLabel = selectedSector === 'All' ? '' : ` ${selectedSector}`;
+
+  c.innerHTML = `
+  <div class="grid grid-4" style="margin-bottom:16px">
+    <div class="card card-sm">
+      <div class="card-title">Invest Signals</div>
+      <div class="card-value" style="color:#34d399">${filteredInsights.filter(i=>i.tag==='invest').length}</div>
+      <div class="card-delta">High-conviction opportunities</div>
+    </div>
+    <div class="card card-sm">
+      <div class="card-title">Watch Signals</div>
+      <div class="card-value" style="color:#fbbf24">${filteredInsights.filter(i=>i.tag==='watch').length}</div>
+      <div class="card-delta">Emerging trends to monitor</div>
+    </div>
+    <div class="card card-sm">
+      <div class="card-title">Saturated Zones</div>
+      <div class="card-value" style="color:#f87171">${filteredInsights.filter(i=>i.tag==='saturated').length}</div>
+      <div class="card-delta">Avoid — low upside</div>
+    </div>
+    <div class="card card-sm">
+      <div class="card-title">Articles Tracked</div>
+      <div class="card-value" style="color:#818cf8">${(liveData.articles||[]).length}</div>
+      <div class="card-delta">Live signals from GNews</div>
+    </div>
+  </div>
+
+  <div class="filter-row" style="margin-bottom:16px">
+    ${SECTORS.map(s => `<button class="filter-btn${selectedSector===s?' active':''}" onclick="changeSector('${s}')">${s==='All'?'All Sectors':s}</button>`).join('')}
+  </div>
+
+  <div class="section">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div class="section-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        ${sectorLabel ? sectorLabel.trim() + ' Investment Signals' : 'Live Investment Signals'}
+        <span id="live-count-badge" style="font-size:10px;color:var(--muted);font-weight:400">${hasLive ? '· ' + filteredInsights.length + ' signals · Updated ' + new Date(liveData.generatedAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : ''}</span>
+      </div>
+      <button class="refresh-btn" style="font-size:11px;padding:5px 12px" onclick="refreshIntelligence()">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+        Refresh
+      </button>
+    </div>
+    <div class="section-sub">Claude-powered insights from live GNews feed — updates on every refresh</div>
+    <div id="insight-grid" style="display:flex;flex-direction:column;gap:14px;margin-top:12px"></div>
+  </div>
+
+  <div class="section" id="news-feed-section">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div class="section-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5"><path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8a2 2 0 00-2 2v2"/><path d="M4 22a2 2 0 01-2-2V8a2 2 0 012-2h4"/><path d="M14 2v6h6"/></svg>
+        Latest News
+        <span id="news-feed-badge" style="font-size:10px;color:var(--muted);font-weight:400"></span>
+      </div>
+    </div>
+    <div class="section-sub">Live articles fetched from GNews — newest first</div>
+    <div id="news-feed-grid" style="display:flex;flex-direction:column;gap:8px;margin-top:10px"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title" style="margin-bottom:8px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M5.34 18.66l-1.41 1.41M22 12h-2M4 12H2M19.07 19.07l-1.41-1.41M5.34 5.34L3.93 3.93"/></svg>
+      API Debug
+    </div>
+    <div id="debug-panel" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;font-size:11px;font-family:monospace;color:var(--muted);line-height:2">Loading...</div>
+  </div>`;
+
+  // ── Render live insights ──────────────────────────────────────────────────────
+  const grid = document.getElementById('insight-grid');
+
+  if (!hasLive) {
+    grid.innerHTML = `<div class="live-insights-empty">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      <span>No live signals yet — click <strong style="color:var(--teal);margin:0 4px">Refresh Intelligence</strong> in the top bar to generate AI insights from live news.</span>
+    </div>`;
+  } else if (filteredInsights.length === 0) {
+    grid.innerHTML = `<div class="empty">No ${selectedSector} insights in this refresh. Select "All Sectors" or click Refresh to fetch more.</div>`;
+  } else {
+    const confBars = (level) => {
+      const lit = level==='High'?3:level==='Medium'?2:1;
+      const barColor = level==='High'?'lit-green':level==='Medium'?'lit-yellow':'lit-gray';
+      return `<div class="conf-indicator">${[1,2,3].map(i=>`<div class="conf-bar${i<=lit?' '+barColor:''}"></div>`).join('')}</div>`;
+    };
+    const confClass = l => l==='High'?'conf-high':l==='Medium'?'conf-medium':'conf-low';
+    const timeClass = t => t==='Immediate'?'time-immediate':t==='Emerging'?'time-emerging':'time-longterm';
+    const timeIcon  = t => t==='Immediate'?'⚡':t==='Emerging'?'📈':'🔭';
+
+    filteredInsights.forEach((ins) => {
+      const el = document.createElement('div');
+      el.className = `signal-card ${ins.tag}`;
+      el.style.cssText = `border-top:2px solid ${ins.tag==='invest'?'#10b981':ins.tag==='watch'?'#f59e0b':'#ef4444'}`;
+
+      el.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <span class="signal-badge ${ins.tag}">${ins.tag==='invest'?'🟢 INVEST':ins.tag==='watch'?'🟡 WATCH':'🔴 SATURATED'}</span>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            ${ins.sector?`<span class="signal-tag">${ins.sector}</span>`:''}
+            ${ins.vcl?`<span class="signal-tag">${ins.vcl}</span>`:''}
+            ${ins.momentum?`<span class="signal-tag" style="background:rgba(6,182,212,.1);color:var(--teal)">${ins.momentum} momentum</span>`:''}
+          </div>
+        </div>
+        <div class="signal-title">${ins.title}</div>
+        ${ins.whyMatters?`<div style="margin:8px 0;padding:8px 10px;background:rgba(99,102,241,.08);border-left:2px solid #6366f1;border-radius:4px;font-size:12px;color:#a5b4fc">💡 ${ins.whyMatters}</div>`:''}
+        ${ins.what?`<div class="signal-body" style="margin-top:4px">${ins.what}</div>`:''}
+        ${ins.why?`<div class="signal-body" style="margin-top:3px;color:#94a3b8">${ins.why}</div>`:''}
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <span class="score-pill ${confClass(ins.confidence)}">${confBars(ins.confidence)} Confidence: ${ins.confidence}</span>
+          <span class="score-pill ${timeClass(ins.timeSensitivity)}">${timeIcon(ins.timeSensitivity)} ${ins.timeSensitivity}</span>
+        </div>
+        ${ins.dataBasis?`<div class="databasis-block" style="margin-top:10px"><strong>📊 Data Basis —</strong> ${ins.dataBasis}</div>`:''}
+        <div class="signal-action">→ ${ins.action||''}</div>
+        ${ins.indiaImpact?`<div style="margin-top:10px;padding:8px 10px;background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:6px;font-size:11px"><span style="font-weight:700;color:#34d399">🇮🇳 India Impact: ${ins.indiaImpact}</span>${ins.indiaWhy?` — <span style="color:var(--muted)">${ins.indiaWhy}</span>`:''}</div>`:''}`;
+      grid.appendChild(el);
+    });
+  }
+
+  loadDebugPanel();
+  renderNewsFeed();
+}
+
+function renderNewsFeed() {
+  const grid  = document.getElementById('news-feed-grid');
+  const badge = document.getElementById('news-feed-badge');
+  if (!grid) return;
+
+  let articles = liveData.articles || [];
+  if (selectedSector !== 'All') {
+    articles = articles.filter(a => a.industry === selectedSector);
+  }
+
+  if (!articles.length) {
+    grid.innerHTML = `<div class="live-insights-empty">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      <span>No articles yet — click <strong style="color:var(--teal);margin:0 4px">Refresh Intelligence</strong> to fetch live news.</span>
+    </div>`;
+    if (badge) badge.textContent = '';
+    return;
+  }
+
+  const industryColors = {Defence:'#ef4444',Healthcare:'#10b981',Logistics:'#6366f1',Automotive:'#f59e0b',Agriculture:'#06b6d4',Space:'#8b5cf6',Consumer:'#ec4899',General:'#64748b'};
+  const newCount = articles.filter(a => prevArticleTitles.size > 0 && !prevArticleTitles.has(a.title)).length;
+
+  if (badge) badge.textContent = `· ${articles.length} articles${newCount > 0 ? ` · ${newCount} new` : ''}`;
+
+  grid.innerHTML = articles.map(a => {
+    const isNew = prevArticleTitles.size > 0 && !prevArticleTitles.has(a.title);
+    const indColor = industryColors[a.industry] || '#64748b';
+    return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:var(--surface2);border:1px solid ${isNew ? 'rgba(16,185,129,.35)' : 'var(--border)'};border-left:3px solid ${isNew ? '#10b981' : indColor};border-radius:8px;transition:border .3s">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap">
+          ${isNew ? `<span style="font-size:9px;font-weight:700;color:#10b981;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);padding:1px 5px;border-radius:4px;letter-spacing:.5px">NEW</span>` : ''}
+          <span style="font-size:10px;font-weight:600;color:${indColor}">${a.industry}</span>
+          <span style="font-size:10px;color:var(--muted)">·</span>
+          <span style="font-size:10px;color:var(--muted)">${a.vcl}</span>
+          <span style="font-size:10px;color:var(--muted)">·</span>
+          <span style="font-size:10px;color:var(--muted)">${a.source}</span>
+          ${a.signal === 'invest' ? `<span style="font-size:9px;font-weight:700;color:#10b981;background:rgba(16,185,129,.1);padding:1px 5px;border-radius:4px">FUNDING</span>` : ''}
+        </div>
+        <div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.4;margin-bottom:3px">
+          ${a.link ? `<a href="${a.link}" target="_blank" style="color:inherit;text-decoration:none" onmouseover="this.style.color='var(--teal)'" onmouseout="this.style.color='inherit'">${a.title}</a>` : a.title}
+        </div>
+        ${a.summary ? `<div style="font-size:11px;color:var(--muted);line-height:1.5">${a.summary.slice(0,160)}…</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ===================== MARKET STRUCTURE =====================
+function renderMarket() {
+  const c = document.getElementById('content');
+  const indCounts = INDUSTRIES.map(i=>COMPANIES.filter(c=>c.industry===i).length);
+  const vclCounts = VCL.map(v=>COMPANIES.filter(c=>c.vcl===v).length);
+  const publicCount = COMPANIES.filter(c=>c.status==='Public').length;
+  const privateCount = COMPANIES.filter(c=>c.status==='Private').length;
+
+  c.innerHTML = `
+  <div class="grid grid-4" style="margin-bottom:20px">
+    ${INDUSTRIES.map((ind,i)=>`
+    <div class="card card-sm">
+      <div class="card-title">${ind}</div>
+      <div class="card-value">${indCounts[i]}</div>
+      <div class="card-delta">companies tracked · <span class="${gapScore(ind)>0.4?'up':''}">Gap: ${Math.round(gapScore(ind)*100)}%</span></div>
+    </div>`).join('')}
+  </div>
+  <div class="grid grid-2" style="margin-bottom:20px">
+    <div class="card">
+      <div class="card-header"><div class="card-h">Industry Distribution</div><span style="font-size:11px;color:var(--muted)">100 companies</span></div>
+      <div class="chart-wrap"><canvas id="chart-ind"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-h">Value Chain Distribution</div><span style="font-size:11px;color:var(--muted)">7 layers</span></div>
+      <div class="chart-wrap"><canvas id="chart-vcl"></canvas></div>
+    </div>
+  </div>
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="card-header"><div class="card-h">Public vs Private</div></div>
+      <div class="chart-wrap-sm"><canvas id="chart-pub"></canvas></div>
+      <div style="display:flex;gap:16px;justify-content:center;margin-top:12px">
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px"><div style="width:10px;height:10px;border-radius:50%;background:#10b981"></div>Public: ${publicCount}</div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px"><div style="width:10px;height:10px;border-radius:50%;background:#6366f1"></div>Private: ${privateCount}</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-h">Opportunity Gap Score by Sector</div><span class="tag tag-invest" style="font-size:10px">Higher = More Opportunity</span></div>
+      <div class="chart-wrap"><canvas id="chart-gap"></canvas></div>
+    </div>
+  </div>`;
+
+  const chartColors = ['#6366f1','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899'];
+
+  charts.ind = new Chart(document.getElementById('chart-ind'), {
+    type:'bar',
+    data:{labels:INDUSTRIES,datasets:[{data:indCounts,backgroundColor:chartColors,borderRadius:6,borderSkipped:false}]},
+    options:{...barOpts('Companies per Industry')}
+  });
+
+  charts.vcl = new Chart(document.getElementById('chart-vcl'), {
+    type:'bar',
+    data:{labels:VCL.map(v=>v.length>15?v.slice(0,15)+'…':v),datasets:[{data:vclCounts,backgroundColor:chartColors,borderRadius:6,borderSkipped:false}]},
+    options:{...barOpts('Companies per Value Chain Layer')}
+  });
+
+  charts.pub = new Chart(document.getElementById('chart-pub'), {
+    type:'doughnut',
+    data:{labels:['Public','Private'],datasets:[{data:[publicCount,privateCount],backgroundColor:['#10b981','#6366f1'],borderWidth:0,hoverBorderWidth:0}]},
+    options:{...doughnutOpts()}
+  });
+
+  const gapScores = INDUSTRIES.map(ind=>Math.round(gapScore(ind)*100));
+  charts.gap = new Chart(document.getElementById('chart-gap'), {
+    type:'bar',
+    data:{labels:INDUSTRIES,datasets:[{data:gapScores,backgroundColor:gapScores.map(s=>s>55?'#10b981':s>35?'#f59e0b':'#6366f1'),borderRadius:6,borderSkipped:false}]},
+    options:{...barOpts('Gap Score (% of value chain uncovered)',true)}
+  });
+}
+
+function barOpts(title, pct=false) {
+  return {
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{backgroundColor:'#1e293b',borderColor:'#1e2d45',borderWidth:1,titleColor:'#e2e8f0',bodyColor:'#94a3b8',padding:10,callbacks:{label:ctx=>`${pct?ctx.raw+'%':ctx.raw} ${pct?'uncovered':' companies'}`}}},
+    scales:{x:{grid:{display:false},ticks:{color:'#64748b',font:{size:10}}},y:{grid:{color:'rgba(30,45,69,.5)'},ticks:{color:'#64748b',font:{size:10}}}}
+  };
+}
+function doughnutOpts() {
+  return {
+    responsive:true,maintainAspectRatio:false,cutout:'70%',
+    plugins:{legend:{display:false},tooltip:{backgroundColor:'#1e293b',borderColor:'#1e2d45',borderWidth:1,titleColor:'#e2e8f0',bodyColor:'#94a3b8'}}
+  };
+}
+
+// ===================== CAPITAL INTELLIGENCE =====================
+function renderCapital() {
+  const c = document.getElementById('content');
+
+  // Sector funding (capped to avoid mega-cos distortion)
+  const sectorCaps = INDUSTRIES.map(ind=>{
+    const companies = COMPANIES.filter(co=>co.industry===ind);
+    const total = companies.reduce((s,co)=>s+Math.min(co.fundingM,500000),0);
+    const count = companies.length;
+    const avg = count > 0 ? total/count : 0;
+    return {ind, total, avg, count};
+  }).sort((a,b)=>b.total-a.total);
+
+  const maxTotal = sectorCaps[0].total;
+
+  // Top companies by funding (excluding mega-corps for clarity, or cap them)
+  const topCompanies = [...COMPANIES]
+    .filter(c=>c.fundingM>0)
+    .sort((a,b)=>Math.min(b.fundingM,500000)-Math.min(a.fundingM,500000))
+    .slice(0,15);
+
+  const maxFunding = Math.min(topCompanies[0].fundingM, 500000);
+
+  c.innerHTML = `
+  <div class="grid grid-4" style="margin-bottom:20px">
+    <div class="card card-sm">
+      <div class="card-title">Most Funded Sector</div>
+      <div class="card-value" style="font-size:20px;color:#34d399">${sectorCaps[0].ind}</div>
+      <div class="card-delta">Capital concentration leader</div>
+    </div>
+    <div class="card card-sm">
+      <div class="card-title">Least Funded Sector</div>
+      <div class="card-value" style="font-size:20px;color:#f87171">${sectorCaps[sectorCaps.length-1].ind}</div>
+      <div class="card-delta">Capital gap — potential opportunity</div>
+    </div>
+    <div class="card card-sm">
+      <div class="card-title">Private Companies</div>
+      <div class="card-value">52</div>
+      <div class="card-delta">Not yet priced by market</div>
+    </div>
+    <div class="card card-sm">
+      <div class="card-title">Undisclosed Funding</div>
+      <div class="card-value">${COMPANIES.filter(c=>c.fundingM===0).length}</div>
+      <div class="card-delta">Unlisted / stealth stage</div>
+    </div>
+  </div>
+
+  <div class="grid grid-2" style="margin-bottom:20px">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-h">Capital by Sector</div>
+        <span style="font-size:10px;color:var(--muted)">Capped at $500B per company</span>
+      </div>
+      <div class="capital-list">
+        ${sectorCaps.map((s,i)=>`
+        <div class="capital-item">
+          <div class="capital-rank">${i+1}</div>
+          <div>
+            <div class="capital-name">${s.ind}</div>
+            <div class="capital-sector">${s.count} companies</div>
+          </div>
+          <div class="capital-bar-wrap">
+            <div class="capital-bar" style="width:${Math.round(s.total/maxTotal*100)}%"></div>
+          </div>
+          <div class="capital-amt">${formatM(s.total)}</div>
+        </div>`).join('')}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-h">Avg Funding Per Company by Sector</div>
+        <span class="tag tag-invest" style="font-size:10px">Low avg = undercapitalized</span>
+      </div>
+      <div class="chart-wrap"><canvas id="chart-avgcap"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-h">Top 15 Companies by Capital</div>
+      <span style="font-size:11px;color:var(--muted)">Capped at $500B for scale</span>
+    </div>
+    <div class="capital-list">
+      ${topCompanies.map((co,i)=>`
+      <div class="capital-item">
+        <div class="capital-rank">${i+1}</div>
+        <div style="flex:1;min-width:0">
+          <div class="capital-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${co.name}</div>
+          <div class="capital-sector">${co.industry} · ${co.vcl}</div>
+        </div>
+        <span class="public-badge ${co.status==='Public'?'public':'private'}">${co.status}</span>
+        <div class="capital-bar-wrap">
+          <div class="capital-bar" style="width:${Math.round(Math.min(co.fundingM,500000)/maxFunding*100)}%"></div>
+        </div>
+        <div class="capital-amt">${formatM(co.fundingM)}</div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+
+  const avgCaps = sectorCaps.map(s=>Math.round(s.avg));
+  const maxAvg = Math.max(...avgCaps);
+  charts.avgcap = new Chart(document.getElementById('chart-avgcap'), {
+    type:'bar',
+    data:{
+      labels:sectorCaps.map(s=>s.ind),
+      datasets:[{
+        data:avgCaps,
+        backgroundColor:avgCaps.map(v=>v<5000?'#ef4444':v<20000?'#f59e0b':'#10b981'),
+        borderRadius:6,borderSkipped:false
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'#1e293b',borderColor:'#1e2d45',borderWidth:1,callbacks:{label:ctx=>'Avg: '+formatM(ctx.raw)}}},
+      scales:{x:{grid:{display:false},ticks:{color:'#64748b',font:{size:10}}},y:{grid:{color:'rgba(30,45,69,.5)'},ticks:{color:'#64748b',font:{size:10},callback:v=>formatM(v)}}}
+    }
+  });
+}
+
+function formatM(m) {
+  if(m>=1000000) return '$'+Math.round(m/1000000)+'T';
+  if(m>=1000) return '$'+Math.round(m/1000)+'B';
+  if(m>0) return '$'+m+'M';
+  return 'N/A';
+}
+
+// ===================== HEATMAP =====================
+function renderHeatmap() {
+  const c = document.getElementById('content');
+
+  const vclShort = ['Mfg.','Sys. Int.','SW & AI','Design','Comp.','Integr.','Semi.'];
+
+  let hmRows = `
+  <div class="heatmap-row">
+    <div class="heatmap-cell hm-header hm-label">Industry</div>
+    ${VCL.map((v,i)=>`<div class="heatmap-cell hm-header">${vclShort[i]}</div>`).join('')}
+  </div>`;
+
+  INDUSTRIES.forEach(ind=>{
+    hmRows += `<div class="heatmap-row">
+      <div class="heatmap-cell hm-label">${ind}</div>
+      ${VCL.map(v=>{
+        const n = MATRIX[ind][v];
+        const cls = n===0?'hm-0':n===1?'hm-1':n===2?'hm-2':n===3?'hm-3':n===4?'hm-4':n===5?'hm-5':n===6?'hm-6':n===7?'hm-7':n===8?'hm-8':'hm-9plus';
+        const label = n===0?`<div class="hm-zero-badge">GAP</div>`:`${n}`;
+        return `<div class="heatmap-cell ${cls}" title="${ind} × ${v}: ${n} companies" onmouseenter="showTip(event,'${ind} × ${v}','${n===0?'⚡ Opportunity gap — no companies here':'🏢 '+n+' compan'+(n===1?'y':'ies')}')" onmouseleave="hideTip()">${label}</div>`;
+      }).join('')}
+    </div>`;
+  });
+
+  c.innerHTML = `
+  <div class="grid grid-4" style="margin-bottom:20px">
+    <div class="card card-sm">
+      <div class="card-title">Total Cells</div>
+      <div class="card-value">${INDUSTRIES.length * VCL.length}</div>
+      <div class="card-delta">Industry × Value Chain intersections</div>
+    </div>
+    <div class="card card-sm" style="border-color:rgba(16,185,129,.3)">
+      <div class="card-title">Gap Cells (0 companies)</div>
+      <div class="card-value" style="color:#34d399">${INDUSTRIES.reduce((s,i)=>s+VCL.filter(v=>MATRIX[i][v]===0).length,0)}</div>
+      <div class="card-delta">Structural white spaces</div>
+    </div>
+    <div class="card card-sm" style="border-color:rgba(239,68,68,.3)">
+      <div class="card-title">Saturated Cells (5+)</div>
+      <div class="card-value" style="color:#f87171">${INDUSTRIES.reduce((s,i)=>s+VCL.filter(v=>MATRIX[i][v]>=5).length,0)}</div>
+      <div class="card-delta">High competition zones</div>
+    </div>
+    <div class="card card-sm">
+      <div class="card-title">Most Active Cell</div>
+      <div class="card-value" style="font-size:16px;color:#818cf8">Logistics × Mfg.</div>
+      <div class="card-delta">10 companies — most saturated</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-header">
+      <div class="card-h">Industry × Value Chain Density Map</div>
+      <span style="font-size:11px;color:var(--muted)">Hover cells for details · Red GAP = investment opportunity</span>
+    </div>
+    <div class="heatmap-wrap">
+      <div class="heatmap">${hmRows}</div>
+    </div>
+    <div class="hm-legend">
+      <span>Density:</span>
+      <div class="hm-legend-item"><div class="hm-legend-dot" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3)"></div>0 (Gap)</div>
+      <div class="hm-legend-item"><div class="hm-legend-dot" style="background:rgba(245,158,11,.15)"></div>1–2</div>
+      <div class="hm-legend-item"><div class="hm-legend-dot" style="background:rgba(99,102,241,.25)"></div>3–4</div>
+      <div class="hm-legend-item"><div class="hm-legend-dot" style="background:rgba(16,185,129,.3)"></div>5–7</div>
+      <div class="hm-legend-item"><div class="hm-legend-dot" style="background:rgba(16,185,129,.6)"></div>8+ (Saturated)</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-h">Top Opportunity Gaps</div>
+      <span class="tag tag-invest">Confirmed White Spaces</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:4px">
+      ${getTopGaps().map(g=>`
+      <div style="background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:12px">
+        <div style="font-size:11px;font-weight:700;color:#34d399;margin-bottom:4px">🟢 ${g.ind} × ${g.vcl}</div>
+        <div style="font-size:11px;color:var(--muted)">0 companies · ${g.reason}</div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function getTopGaps() {
+  const gaps = [];
+  const reasons = {
+    'Agriculture_Software & AI':'Only Trimble — massive digital farm gap',
+    'Agriculture_Design':'No design-led ag robotics firms',
+    'Agriculture_Integration & Services':'No ag systems integration',
+    'Agriculture_Semiconductor':'Zero ag-specific chips',
+    'Consumer_Software & AI':'No AI platform for home robots',
+    'Consumer_System Integrators':'No consumer robotics ecosystem',
+    'Consumer_Integration & Services':'No deployment services',
+    'Defence_Components & Subsystems':'Sensitive supply chain gap',
+    'Defence_Integration & Services':'No specialist defence integrator',
+    'Defence_Semiconductor':'Sovereign chip imperative',
+    'Healthcare_Components & Subsystems':'Haptics/sensors gap',
+    'Healthcare_Semiconductor':'No medical robotics chips',
+    'Logistics_Design':'No design-led logistics innovation',
+    'Logistics_Semiconductor':'No warehouse AI chips',
+    'Space_Software & AI':'No orbital autonomy software',
+    'Space_System Integrators':'No space systems integrator',
+    'Space_Integration & Services':'No space robotics services',
+    'Space_Semiconductor':'No space-grade robotics chips',
+    'Automotive_System Integrators':'No AV systems integrators'
+  };
+  INDUSTRIES.forEach(ind=>{
+    VCL.forEach(v=>{
+      if(MATRIX[ind][v]===0){
+        gaps.push({ind,vcl:v,reason:reasons[ind+'_'+v]||'Structural gap identified'});
+      }
+    });
+  });
+  return gaps.slice(0,9);
+}
+
+// ===================== COMPANIES =====================
+function renderCompanies() {
+  const c = document.getElementById('content');
+  c.innerHTML = `
+  <div style="margin-bottom:16px">
+    <input type="text" class="search-bar" id="company-search" placeholder="Search companies, sectors, technologies…" oninput="filterCompanies()">
+    <div class="filter-row" id="filter-row">
+      <button class="filter-btn active" onclick="setFilter('All',this)">All (100)</button>
+      ${INDUSTRIES.map(i=>`<button class="filter-btn" onclick="setFilter('${i}',this)">${i} (${COMPANIES.filter(c=>c.industry===i).length})</button>`).join('')}
+    </div>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="overflow-x:auto;max-height:calc(100vh - 280px);overflow-y:auto">
+      <table class="company-table">
+        <thead>
+          <tr>
+            <th>Company</th>
+            <th>Sector</th>
+            <th>Value Chain</th>
+            <th>Sub-Segment</th>
+            <th>Status</th>
+            <th>Capital / Funding</th>
+            <th>Signal</th>
+          </tr>
+        </thead>
+        <tbody id="company-tbody"></tbody>
+      </table>
+    </div>
+  </div>`;
+  renderCompanyRows();
+}
+
+function setFilter(f, btn) {
+  companyFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCompanyRows();
+}
+
+function filterCompanies() {
+  companySearch = document.getElementById('company-search').value.toLowerCase();
+  renderCompanyRows();
+}
+
+function getSignal(c) {
+  const n = MATRIX[c.industry][c.vcl];
+  if(n===0) return '<span class="tag tag-invest">🟢 INVEST</span>';
+  if(n<=2) return '<span class="tag tag-watch">🟡 WATCH</span>';
+  return '<span class="tag tag-saturated">🔴 SATURATED</span>';
+}
+
+function renderCompanyRows() {
+  const tbody = document.getElementById('company-tbody');
+  if(!tbody) return;
+  const filtered = COMPANIES.filter(co=>{
+    const matchFilter = companyFilter==='All'||co.industry===companyFilter;
+    const matchSearch = !companySearch||
+      co.name.toLowerCase().includes(companySearch)||
+      co.industry.toLowerCase().includes(companySearch)||
+      co.vcl.toLowerCase().includes(companySearch)||
+      co.sub.toLowerCase().includes(companySearch)||
+      co.country.toLowerCase().includes(companySearch);
+    return matchFilter&&matchSearch;
+  });
+  tbody.innerHTML = filtered.length===0?`<tr><td colspan="7" class="empty">No companies match your filters.</td></tr>`:
+    filtered.map(co=>`<tr>
+      <td><div class="company-name">${co.name}</div><div class="company-country">${co.country}</div></td>
+      <td><span style="color:var(--accent2);font-weight:500">${co.industry}</span></td>
+      <td style="color:var(--muted)">${co.vcl}</td>
+      <td style="color:var(--muted);font-size:11px;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${co.sub}</td>
+      <td><span class="public-badge ${co.status==='Public'?'public':'private'}">${co.status}</span></td>
+      <td class="funding-cell">${co.funding}</td>
+      <td>${getSignal(co)}</td>
+    </tr>`).join('');
+}
+
+// ===================== QUERY =====================
+function renderQuery() {
+  const c = document.getElementById('content');
+  c.innerHTML = `
+  <div class="query-box">
+    <div class="query-input-row">
+      <input type="text" class="query-input" id="query-input" placeholder="Ask: Which sectors are underfunded? Where is competition lowest? Where should capital flow?" onkeydown="if(event.key==='Enter')runQuery()">
+      <button class="btn btn-primary" onclick="runQuery()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Analyze
+      </button>
+    </div>
+    <div class="query-suggestions">
+      ${QUERIES.map(q=>`<div class="query-chip" onclick="setQuery('${q.label}')">${q.label}</div>`).join('')}
+    </div>
+  </div>
+  <div id="query-result"></div>`;
+}
+
+function setQuery(q) {
+  document.getElementById('query-input').value = q;
+  runQuery();
+}
+
+function runQuery() {
+  const q = document.getElementById('query-input').value.toLowerCase();
+  const r = document.getElementById('query-result');
+  if(!q.trim()){r.innerHTML='';return;}
+
+  let result = '';
+
+  if(q.includes('underfund')||q.includes('least capital')||q.includes('missing capital')){
+    const sectors = INDUSTRIES.map(ind=>{
+      const cos = COMPANIES.filter(c=>c.industry===ind);
+      const avg = cos.reduce((s,c)=>s+Math.min(c.fundingM,100000),0)/cos.length;
+      return {ind,avg,count:cos.length};
+    }).sort((a,b)=>a.avg-b.avg);
+    const max = sectors[sectors.length-1].avg;
+    result = `
+      <div class="query-result">
+        <div class="query-answer">⚡ <strong>Space and Agriculture are the most undercapitalized sectors</strong> — lowest average funding per company, highest proportion of sub-$100M players.</div>
+        ${sectors.map((s,i)=>`
+        <div class="query-data-row">
+          <div class="query-data-label" style="min-width:110px">${s.ind}</div>
+          <div class="query-data-bar-wrap"><div class="query-data-bar" style="width:${Math.round(s.avg/max*100)}%;background:${i<2?'#ef4444':i<4?'#f59e0b':'#10b981'}"></div></div>
+          <div class="query-data-value">${formatM(Math.round(s.avg))} avg</div>
+        </div>`).join('')}
+        <div style="margin-top:14px;padding:12px;background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.2);border-radius:8px;font-size:12px;color:var(--text)">
+          <strong style="color:#34d399">→ Action:</strong> Space (avg ~$450M) and Agriculture (avg ~$127M) have the largest funding gaps relative to their hardware maturity. These are the highest-leverage capital deployment zones.
+        </div>
+      </div>`;
+  }
+  else if(q.includes('competition lowest')||q.includes('least competitive')||q.includes('least compet')){
+    const gaps = [];
+    INDUSTRIES.forEach(ind=>{
+      VCL.forEach(v=>{
+        const n = MATRIX[ind][v];
+        if(n<=1) gaps.push({label:`${ind} × ${v}`,n,color:n===0?'#10b981':'#6366f1'});
+      });
+    });
+    const zeros = gaps.filter(g=>g.n===0);
+    result = `
+      <div class="query-result">
+        <div class="query-answer">🟢 <strong>${zeros.length} sectors have zero competition</strong> — these are structural white spaces with no companies currently operating.</div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px">
+          ${zeros.slice(0,10).map(g=>`
+          <div style="background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:7px;padding:10px 12px;font-size:12px">
+            <div style="font-weight:700;color:#34d399;margin-bottom:2px">${g.label}</div>
+            <div style="color:var(--muted)">0 companies — first-mover advantage available</div>
+          </div>`).join('')}
+        </div>
+        <div style="margin-top:12px;padding:12px;background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.2);border-radius:8px;font-size:12px">
+          <strong style="color:#34d399">→ Highest conviction:</strong> Agriculture Software & AI, Space Software & AI, Consumer Software & AI, Healthcare Semiconductor, Defence Semiconductor — these 5 represent the largest opportunity-to-competition ratio in the dataset.
+        </div>
+      </div>`;
+  }
+  else if(q.includes('invest')||q.includes('capital flow')||q.includes('where should')||q.includes('best opportunit')){
+    const invInsights = (liveData.insights||[]).filter(i=>i.tag==='invest');
+    result = `
+      <div class="query-result">
+        <div class="query-answer">🎯 <strong>Capital should flow to software/AI layers in underpenetrated sectors.</strong> All three major white spaces share the same pattern: mature hardware with zero software overlay.</div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px">
+          ${invInsights.slice(0,5).map((ins,i)=>`
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:12px;background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.15);border-radius:8px">
+            <div style="min-width:24px;height:24px;background:#10b981;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;flex-shrink:0">${i+1}</div>
+            <div>
+              <div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:3px">${ins.sector} × ${ins.vcl}</div>
+              <div style="font-size:11px;color:var(--muted)">${ins.title}</div>
+            </div>
+            <span class="tag tag-invest" style="flex-shrink:0">🟢 INVEST</span>
+          </div>`).join('')}
+        </div>
+      </div>`;
+  }
+  else if(q.includes('gap')||q.includes('most gap')||q.includes('uncovered')){
+    const vclGaps = VCL.map(v=>{
+      const zeros = INDUSTRIES.filter(i=>MATRIX[i][v]===0).length;
+      return {v,zeros,pct:Math.round(zeros/INDUSTRIES.length*100)};
+    }).sort((a,b)=>b.zeros-a.zeros);
+    const max = vclGaps[0].zeros;
+    result = `
+      <div class="query-result">
+        <div class="query-answer">📊 <strong>Semiconductor is the most structurally absent value chain layer</strong> — missing from ${vclGaps[0].zeros} out of 7 industries. Software & AI is absent from 4 industries.</div>
+        ${vclGaps.map(g=>`
+        <div class="query-data-row">
+          <div class="query-data-label" style="min-width:160px">${g.v}</div>
+          <div class="query-data-bar-wrap"><div class="query-data-bar" style="width:${Math.round(g.zeros/max*100)}%;background:${g.zeros>=5?'#10b981':g.zeros>=3?'#f59e0b':'#6366f1'}"></div></div>
+          <div class="query-data-value">${g.zeros} gaps (${g.pct}%)</div>
+        </div>`).join('')}
+        <div style="margin-top:14px;padding:12px;background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.2);border-radius:8px;font-size:12px">
+          <strong style="color:#818cf8">→ Action:</strong> Semiconductor (6 gaps) and Software & AI (4 gaps) are the two most systematically absent layers. Sector-agnostic platform plays in these layers can serve multiple markets simultaneously.
+        </div>
+      </div>`;
+  }
+  else if(q.includes('emerg')||q.includes('watch')||q.includes('trend')){
+    const watchInsights = (liveData.insights||[]).filter(i=>i.tag==='watch');
+    result = `
+      <div class="query-result">
+        <div class="query-answer">🟡 <strong>${watchInsights.length} emerging trends identified</strong> — these are inflection points where capital is starting to flow but the opportunity window is still open.</div>
+        ${watchInsights.map(ins=>`
+        <div style="padding:14px;background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.2);border-radius:8px;margin-top:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <span class="tag tag-watch">🟡 WATCH</span>
+            <span style="font-size:11px;color:var(--muted)">${ins.sector}</span>
+          </div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:5px">${ins.title}</div>
+          <div style="font-size:12px;color:var(--muted)">${ins.what||ins.why||''}</div>
+          <div style="margin-top:8px;font-size:12px;color:#fbbf24"><strong>→</strong> ${ins.action}</div>
+        </div>`).join('')}
+      </div>`;
+  }
+  else if(q.includes('saturat')||q.includes('too late')||q.includes('avoid')){
+    const satInsights = (liveData.insights||[]).filter(i=>i.tag==='saturated');
+    result = `
+      <div class="query-result">
+        <div class="query-answer">🔴 <strong>${satInsights.length} saturated zones identified</strong> — these are structurally unattractive for new entrants due to incumbent dominance or margin pressure.</div>
+        ${satInsights.map(ins=>`
+        <div style="padding:14px;background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.2);border-radius:8px;margin-top:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+            <span class="tag tag-saturated">🔴 SATURATED</span>
+            <span style="font-size:11px;color:var(--muted)">${ins.sector} · ${ins.vcl}</span>
+          </div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:5px">${ins.title}</div>
+          <div style="font-size:12px;color:var(--muted)">${ins.what||ins.why||''}</div>
+          <div style="margin-top:8px;font-size:12px;color:#f87171"><strong>→ Avoid:</strong> ${ins.action}</div>
+        </div>`).join('')}
+      </div>`;
+  }
+  else {
+    result = `
+      <div class="query-result">
+        <div class="query-answer">Try one of these queries:</div>
+        <div class="query-suggestions" style="margin-top:10px">
+          ${QUERIES.map(q=>`<div class="query-chip" onclick="setQuery('${q.label}')">${q.label}</div>`).join('')}
+        </div>
+      </div>`;
+  }
+  r.innerHTML = result;
+}
+
+// ===================== TOOLTIP =====================
+function showTip(e, title, body) {
+  const t = document.getElementById('tooltip');
+  t.innerHTML = `<div style="font-weight:700;margin-bottom:4px;color:#fff">${title}</div><div style="color:#94a3b8">${body}</div>`;
+  t.style.display = 'block';
+  t.style.left = (e.clientX+14)+'px';
+  t.style.top = (e.clientY-10)+'px';
+}
+function hideTip() {
+  document.getElementById('tooltip').style.display = 'none';
+}
+
+// ===================== EXPORT =====================
+function openExport() {
+  const invest = (liveData.insights||[]).filter(i=>i.tag==='invest');
+  const watch = (liveData.insights||[]).filter(i=>i.tag==='watch');
+  const sat = (liveData.insights||[]).filter(i=>i.tag==='saturated');
+  const whiteSpaces = INDUSTRIES.reduce((s,i)=>s+VCL.filter(v=>MATRIX[i][v]===0).length,0);
+
+  const text = `ROBOTICS INTELLIGENCE PLATFORM — INVESTOR BRIEF
+Generated: ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}
+Database: 100 companies · 7 sectors · 7 value chain layers
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+EXECUTIVE SUMMARY
+• ${whiteSpaces} structural white spaces identified across the robotics value chain
+• ${invest.length} high-conviction INVEST signals generated
+• ${watch.length} emerging WATCH signals detected
+• ${sat.length} SATURATED zones flagged for avoidance
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TOP INVESTMENT SIGNALS [🟢 INVEST]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${invest.map((ins,i)=>`${i+1}. ${ins.title}
+   Sector: ${ins.sector} | Layer: ${ins.vcl}
+   Why: ${ins.reason}
+   Action: ${ins.action}
+`).join('\n')}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EMERGING TRENDS [🟡 WATCH]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${watch.map((ins,i)=>`${i+1}. ${ins.title}
+   Sector: ${ins.sector} | Why: ${ins.reason}
+   Action: ${ins.action}
+`).join('\n')}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SATURATED / AVOID [🔴 SATURATED]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${sat.map((ins,i)=>`${i+1}. ${ins.title}
+   Sector: ${ins.sector} | Reason: ${ins.reason}
+`).join('\n')}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SECTOR ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${INDUSTRIES.map(ind=>{
+  const cos = COMPANIES.filter(c=>c.industry===ind);
+  const gaps = VCL.filter(v=>MATRIX[ind][v]===0);
+  return `${ind.toUpperCase()} (${cos.length} companies)
+  Covered layers: ${VCL.filter(v=>MATRIX[ind][v]>0).join(', ')}
+  Gap layers: ${gaps.length>0?gaps.join(', '):'None'}`;
+}).join('\n\n')}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Robotics Intelligence Platform · Proprietary Analysis
+`;
+
+  document.getElementById('export-content').textContent = text;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeExport() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+function copyExport() {
+  const text = document.getElementById('export-content').textContent;
+  navigator.clipboard.writeText(text).then(()=>{
+    const btn = event.target;
+    btn.textContent = 'Copied!';
+    setTimeout(()=>btn.textContent='Copy to Clipboard',2000);
+  });
+}
+
+document.getElementById('modal-overlay').addEventListener('click',e=>{
+  if(e.target===e.currentTarget) closeExport();
+});
+
+// ===================== INIT =====================
+navigate('opportunity');
+</script>
+</body>
+</html>
