@@ -1,23 +1,16 @@
 {
   "name": "robotics-intelligence",
   "version": "1.0.0",
-  "description": "",
+  "description": "Robotics Intelligence Platform",
   "main": "server.js",
   "scripts": {
-  "start": "node server.js",
-  "test": "echo \"Error: no test specified\" && exit 1"
-},
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
-  "node-fetch": "^3.3.2",
-  "@anthropic-ai/sdk": "^0.82.0",
-  "cors": "^2.8.6",
-  "dotenv": "^17.4.1",
-  "express": "^5.2.1",
-  "fast-xml-parser": "^5.5.10",
-  "node-cron": "^4.2.1"
-}
+    "express": "^4.18.2"
+  },
+  "license": "ISC"
 }
