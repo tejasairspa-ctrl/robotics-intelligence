@@ -764,7 +764,7 @@ async function refreshIntelligence() {
   } catch(e) {
     ts.textContent = 'Server offline';
     dot.className = 'dot-stale';
-    showToast('⚠ Backend offline. Run: node server.js', true);
+    showToast('⚠ Backend offline — please try again shortly', true);
   } finally {
     isRefreshing = false;
     btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg> Refresh Intelligence`;
@@ -1048,22 +1048,23 @@ async function loadDebugPanel() {
     const res = await fetch(`${API_BASE}/api/status`);
     if (!res.ok) throw new Error('offline');
     const d = await res.json();
-    const keyBadge = k => k === 'NOT SET'
-      ? `<span style="color:var(--red);font-weight:600">NOT SET</span>`
-      : `<span style="color:#4ade80;font-weight:600">${k} ✓</span>`;
+    const lastRefresh = d.lastRefresh
+      ? new Date(d.lastRefresh).toLocaleString()
+      : 'Never — click Refresh Intelligence';
     panel.innerHTML = `
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div style="grid-column:1/-1"><span style="color:var(--text);font-weight:700">RSS Endpoint</span><br><span style="font-size:11px">${d.newsEndpoint}</span></div>
-        <div><span style="color:var(--text);font-weight:700">Anthropic API Key</span><br>${keyBadge(d.apiKey)}</div>
-        <div><span style="color:var(--text);font-weight:700">GNews Key</span><br>${keyBadge(d.gNewsKey)}</div>
-        <div><span style="color:var(--text);font-weight:700">NewsData Key</span><br>${keyBadge(d.newsDataKey)}</div>
-        <div><span style="color:var(--text);font-weight:700">Sources Active</span><br>${d.feedCount} APIs configured</div>
-        <div><span style="color:var(--text);font-weight:700">Articles Fetched</span><br>${d.articlesFetched}</div>
-        <div><span style="color:var(--text);font-weight:700">Last Fetch</span><br>${d.lastFetch || 'Never — click Refresh'}</div>
-        <div><span style="color:var(--text);font-weight:700">Data Source</span><br>${d.source}</div>
+        <div style="grid-column:1/-1">
+          <span style="color:#4ade80;font-weight:700">● Server Online</span>
+          <span style="color:var(--muted);margin-left:10px">as of ${new Date(d.timestamp).toLocaleTimeString()}</span>
+        </div>
+        <div><span style="color:var(--text);font-weight:700">News Source</span><br>GNews API</div>
+        <div><span style="color:var(--text);font-weight:700">AI Engine</span><br>Claude (Anthropic)</div>
+        <div><span style="color:var(--text);font-weight:700">Articles Cached</span><br>${d.articles}</div>
+        <div><span style="color:var(--text);font-weight:700">Insights Generated</span><br>${d.insights}</div>
+        <div style="grid-column:1/-1"><span style="color:var(--text);font-weight:700">Last Refresh</span><br>${lastRefresh}</div>
       </div>`;
   } catch(e) {
-    panel.innerHTML = `<span style="color:var(--red)">&#9888; Server offline — run: node server.js</span>`;
+    panel.innerHTML = `<span style="color:var(--red)">&#9888; Server unreachable — please wait and try refreshing</span>`;
   }
 }
 
