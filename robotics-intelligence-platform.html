@@ -613,7 +613,7 @@ let selectedSector = 'All';
 let charts = {};
 
 // ===================== LIVE STATE =====================
-const API_BASE = 'http://localhost:3000';
+const API_BASE = window.location.origin;
 let liveData = { articles: [], insights: [], momentum: {}, generatedAt: null };
 let isRefreshing = false;
 let autoRefreshOn = false;
