@@ -1,11 +1,12 @@
 'use strict';
 
 require('dotenv').config();
-const express   = require('express');
-const cors      = require('cors');
-const cron      = require('node-cron');
-const Anthropic = require('@anthropic-ai/sdk');
-const path      = require('path');
+const express        = require('express');
+const cors           = require('cors');
+const cron           = require('node-cron');
+const AnthropicPkg   = require('@anthropic-ai/sdk');
+const Anthropic      = AnthropicPkg.default ?? AnthropicPkg;
+const path           = require('path');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -135,19 +136,20 @@ Return ONLY a valid JSON array. No markdown, no explanation.`;
 
   try {
     const msg = await client.messages.create({
-      model:      'claude-haiku-4-5-20251001',
+      model:      'claude-3-haiku-20240307',
       max_tokens: 2500,
       messages:   [{ role: 'user', content: prompt }]
     });
 
     const text  = msg.content[0].text;
+    console.log('  Claude raw response (first 200):', text.slice(0, 200));
     const start = text.indexOf('[');
     const end   = text.lastIndexOf(']');
     if (start === -1 || end === -1) throw new Error('No JSON array in Claude response');
     return JSON.parse(text.slice(start, end + 1));
 
   } catch (e) {
-    console.error('  ✗ Claude error:', e.message);
+    console.error('  ✗ Claude error:', e.message, e.status || '');
     return [];
   }
 }
@@ -182,6 +184,24 @@ async function refresh() {
 }
 
 // ── API routes ────────────────────────────────────────────────────────────────
+
+// Quick Claude connectivity test
+app.get('/api/test-claude', async (req, res) => {
+  if (!ANTHROPIC_KEY) return res.json({ ok: false, error: 'ANTHROPIC_API_KEY not set' });
+  try {
+    const client = new Anthropic({ apiKey: ANTHROPIC_KEY });
+    const msg = await client.messages.create({
+      model:      'claude-3-haiku-20240307',
+      max_tokens: 50,
+      messages:   [{ role: 'user', content: 'Reply with just: {"ok":true}' }]
+    });
+    const text = msg.content[0].text;
+    res.json({ ok: true, response: text, keyTail: ANTHROPIC_KEY.slice(-4) });
+  } catch (e) {
+    res.json({ ok: false, error: e.message, status: e.status });
+  }
+});
+
 app.post('/api/refresh', async (req, res) => {
   try {
     const data = await refresh();
