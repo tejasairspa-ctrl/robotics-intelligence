@@ -1,18 +1,16 @@
 'use strict';
 
 require('dotenv').config();
-const express        = require('express');
-const cors           = require('cors');
-const cron           = require('node-cron');
-const AnthropicPkg   = require('@anthropic-ai/sdk');
-const Anthropic      = AnthropicPkg.default ?? AnthropicPkg;
-const path           = require('path');
+const express  = require('express');
+const cors     = require('cors');
+const cron     = require('node-cron');
+const path     = require('path');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
-const GNEWS_KEY      = process.env.GNEWS_KEY      || '';
-const ANTHROPIC_KEY  = process.env.ANTHROPIC_API_KEY || '';
+const GNEWS_KEY  = process.env.GNEWS_KEY  || '';
+const GROQ_KEY   = process.env.GROQ_API_KEY || '';
 
 // ── In-memory cache ───────────────────────────────────────────────────────────
 let cache = {
@@ -90,15 +88,13 @@ async function fetchGNews() {
   }
 }
 
-// ── Claude insight generation ─────────────────────────────────────────────────
+// ── Groq insight generation ───────────────────────────────────────────────────
 async function generateInsights(articles) {
-  if (!ANTHROPIC_KEY) {
-    console.warn('  ⚠ ANTHROPIC_API_KEY not set — skipping insight generation');
+  if (!GROQ_KEY) {
+    console.warn('  ⚠ GROQ_API_KEY not set — skipping insight generation');
     return [];
   }
   if (articles.length === 0) return [];
-
-  const client = new Anthropic({ apiKey: ANTHROPIC_KEY });
 
   // Group headlines by sector
   const sectors = {};
@@ -135,21 +131,35 @@ Generate exactly 5 investment insights as a JSON array. Each object must have th
 Return ONLY a valid JSON array. No markdown, no explanation.`;
 
   try {
-    const msg = await client.messages.create({
-      model:      'claude-3-haiku-20240307',
-      max_tokens: 2500,
-      messages:   [{ role: 'user', content: prompt }]
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method:  'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${GROQ_KEY}`
+      },
+      body: JSON.stringify({
+        model:      'llama-3.3-70b-versatile',
+        max_tokens: 2500,
+        temperature: 0.4,
+        messages: [{ role: 'user', content: prompt }]
+      })
     });
 
-    const text  = msg.content[0].text;
-    console.log('  Claude raw response (first 200):', text.slice(0, 200));
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`Groq ${res.status}: ${err}`);
+    }
+
+    const data  = await res.json();
+    const text  = data.choices[0].message.content;
+    console.log('  Groq raw response (first 200):', text.slice(0, 200));
     const start = text.indexOf('[');
     const end   = text.lastIndexOf(']');
-    if (start === -1 || end === -1) throw new Error('No JSON array in Claude response');
+    if (start === -1 || end === -1) throw new Error('No JSON array in Groq response');
     return JSON.parse(text.slice(start, end + 1));
 
   } catch (e) {
-    console.error('  ✗ Claude error:', e.message, e.status || '');
+    console.error('  ✗ Groq error:', e.message);
     return [];
   }
 }
@@ -185,20 +195,24 @@ async function refresh() {
 
 // ── API routes ────────────────────────────────────────────────────────────────
 
-// Quick Claude connectivity test
-app.get('/api/test-claude', async (req, res) => {
-  if (!ANTHROPIC_KEY) return res.json({ ok: false, error: 'ANTHROPIC_API_KEY not set' });
+// Quick Groq connectivity test
+app.get('/api/test-groq', async (req, res) => {
+  if (!GROQ_KEY) return res.json({ ok: false, error: 'GROQ_API_KEY not set' });
   try {
-    const client = new Anthropic({ apiKey: ANTHROPIC_KEY });
-    const msg = await client.messages.create({
-      model:      'claude-3-haiku-20240307',
-      max_tokens: 50,
-      messages:   [{ role: 'user', content: 'Reply with just: {"ok":true}' }]
+    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
+      body: JSON.stringify({
+        model:      'llama-3.3-70b-versatile',
+        max_tokens: 20,
+        messages:   [{ role: 'user', content: 'Reply with just: {"ok":true}' }]
+      })
     });
-    const text = msg.content[0].text;
-    res.json({ ok: true, response: text, keyTail: ANTHROPIC_KEY.slice(-4) });
+    const data = await r.json();
+    const text = data.choices?.[0]?.message?.content || JSON.stringify(data);
+    res.json({ ok: r.ok, response: text, keyTail: GROQ_KEY.slice(-4) });
   } catch (e) {
-    res.json({ ok: false, error: e.message, status: e.status });
+    res.json({ ok: false, error: e.message });
   }
 });
 
@@ -229,6 +243,6 @@ cron.schedule('*/20 * * * *', () => {
 // ── Start ─────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`\n🚀 Robotics Intelligence Engine running on port ${PORT}`);
-  console.log(`   GNews key   : ${GNEWS_KEY     ? '****' + GNEWS_KEY.slice(-4)     : 'NOT SET'}`);
-  console.log(`   Anthropic   : ${ANTHROPIC_KEY ? '****' + ANTHROPIC_KEY.slice(-4) : 'NOT SET'}`);
+  console.log(`   GNews key : ${GNEWS_KEY ? '****' + GNEWS_KEY.slice(-4) : 'NOT SET'}`);
+  console.log(`   Groq key  : ${GROQ_KEY  ? '****' + GROQ_KEY.slice(-4)  : 'NOT SET'}`);
 });
