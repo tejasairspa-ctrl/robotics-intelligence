@@ -9,8 +9,10 @@ const path     = require('path');
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
-const GNEWS_KEY  = process.env.GNEWS_KEY  || '';
-const GROQ_KEY   = process.env.GROQ_API_KEY || '';
+const GNEWS_KEY       = process.env.GNEWS_KEY        || '';
+const NEWSDATA_KEY    = process.env.NEWSDATA_KEY     || '';
+const CURRENTS_KEY    = process.env.CURRENTS_API_KEY || '';
+const GROQ_KEY        = process.env.GROQ_API_KEY     || '';
 
 // ── In-memory cache ───────────────────────────────────────────────────────────
 let cache = {
@@ -84,6 +86,54 @@ async function fetchGNews() {
 
   } catch (e) {
     console.error('  ✗ GNews error:', e.message);
+    return [];
+  }
+}
+
+// ── NewsData.io fetch ─────────────────────────────────────────────────────────
+async function fetchNewsData() {
+  if (!NEWSDATA_KEY) return [];
+  const url = `https://newsdata.io/api/1/news?q=robotics+OR+automation+OR+drone&language=en&apikey=${NEWSDATA_KEY}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`NewsData responded ${res.status}`);
+    const data = await res.json();
+    return (data.results || []).map(a => ({
+      title:       a.title       || '',
+      summary:     a.description || '',
+      link:        a.link        || '',
+      source:      a.source_id   || 'NewsData',
+      publishedAt: a.pubDate     || null,
+      industry:    classifyIndustry((a.title || '') + ' ' + (a.description || '')),
+      vcl:         'General',
+      signal:      'watch'
+    })).filter(a => a.title.length > 10);
+  } catch (e) {
+    console.error('  ✗ NewsData error:', e.message);
+    return [];
+  }
+}
+
+// ── CurrentsAPI fetch ─────────────────────────────────────────────────────────
+async function fetchCurrents() {
+  if (!CURRENTS_KEY) return [];
+  const url = `https://api.currentsapi.services/v1/search?keywords=robotics+automation+drone&language=en&apiKey=${CURRENTS_KEY}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`CurrentsAPI responded ${res.status}`);
+    const data = await res.json();
+    return (data.news || []).map(a => ({
+      title:       a.title       || '',
+      summary:     a.description || '',
+      link:        a.url         || '',
+      source:      'CurrentsAPI',
+      publishedAt: a.published   || null,
+      industry:    classifyIndustry((a.title || '') + ' ' + (a.description || '')),
+      vcl:         'General',
+      signal:      'watch'
+    })).filter(a => a.title.length > 10);
+  } catch (e) {
+    console.error('  ✗ CurrentsAPI error:', e.message);
     return [];
   }
 }
@@ -173,12 +223,30 @@ function buildMomentum(articles) {
   return counts;
 }
 
+// ── Deduplicate articles by title ─────────────────────────────────────────────
+function deduplicate(articles) {
+  const seen = new Set();
+  return articles.filter(a => {
+    const key = a.title.slice(0, 60).toLowerCase().replace(/\s+/g, ' ').trim();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 // ── Refresh pipeline ──────────────────────────────────────────────────────────
 async function refresh() {
   console.log(`[${new Date().toISOString()}] Refresh triggered`);
 
-  const articles = await fetchGNews();
-  console.log(`  ✓ GNews: ${articles.length} articles`);
+  const [gnews, newsdata, currents] = await Promise.all([
+    fetchGNews(),
+    fetchNewsData(),
+    fetchCurrents()
+  ]);
+  console.log(`  ✓ GNews: ${gnews.length} | NewsData: ${newsdata.length} | Currents: ${currents.length}`);
+
+  const articles = deduplicate([...gnews, ...newsdata, ...currents]);
+  console.log(`  ✓ ${articles.length} unique articles after dedup`);
 
   const insights = await generateInsights(articles);
   console.log(`  ✓ Insights: ${insights.length} generated`);
@@ -243,6 +311,8 @@ cron.schedule('*/20 * * * *', () => {
 // ── Start ─────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`\n🚀 Robotics Intelligence Engine running on port ${PORT}`);
-  console.log(`   GNews key : ${GNEWS_KEY ? '****' + GNEWS_KEY.slice(-4) : 'NOT SET'}`);
-  console.log(`   Groq key  : ${GROQ_KEY  ? '****' + GROQ_KEY.slice(-4)  : 'NOT SET'}`);
+  console.log(`   GNews      : ${GNEWS_KEY    ? '✓ set' : '✗ NOT SET'}`);
+  console.log(`   NewsData   : ${NEWSDATA_KEY ? '✓ set' : '✗ NOT SET'}`);
+  console.log(`   Currents   : ${CURRENTS_KEY ? '✓ set' : '✗ NOT SET'}`);
+  console.log(`   Groq       : ${GROQ_KEY     ? '✓ set' : '✗ NOT SET'}`);
 });
