@@ -135,6 +135,67 @@ async function fetchGuardian() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// RULE-BASED INDIA CONTEXT — always populated, Gemini enhances if available
+// ─────────────────────────────────────────────────────────────────────────────
+const INDIA_CTX = {
+  Agriculture: {
+    indiaImpact: 'High',
+    indiaWhy: 'India has 140M+ farmers with low automation penetration — precision agri-robotics has massive greenfield opportunity under PM Kisan and RKVY schemes.',
+    indianCompanies: ['CropIn', 'Intello Labs', 'Fasal']
+  },
+  Defence: {
+    indiaImpact: 'High',
+    indiaWhy: 'India\'s ₹6.2L Cr defence budget and "Make in India" mandate are accelerating domestic drone and autonomous defence system procurement at scale.',
+    indianCompanies: ['ideaForge Technology', 'Data Patterns', 'Alpha Design Technologies']
+  },
+  Logistics: {
+    indiaImpact: 'High',
+    indiaWhy: 'India\'s e-commerce boom (2nd fastest globally) is driving urgent warehouse automation across Tier-1 and Tier-2 cities — ROI proven at 18–24 months.',
+    indianCompanies: ['GreyOrange', 'Addverb Technologies', 'ElasticRun']
+  },
+  Automotive: {
+    indiaImpact: 'High',
+    indiaWhy: 'FAME-II subsidies and EV policy push OEMs toward factory automation — Pune, Chennai and Manesar hubs are rapidly expanding robot density.',
+    indianCompanies: ['Tata Motors', 'Mahindra Electric', 'Ola Electric']
+  },
+  Healthcare: {
+    indiaImpact: 'Medium',
+    indiaWhy: 'India\'s 1:1456 doctor-patient ratio creates acute demand for AI diagnostics and surgical robotics, especially in Tier-2+ cities.',
+    indianCompanies: ['Niramai', 'Sigtuple', 'Qure.ai']
+  },
+  Space: {
+    indiaImpact: 'High',
+    indiaWhy: 'IN-SPACe commercialisation and 150+ space startups make India a fast-growing market — ISRO launch cadence is accelerating satellite demand.',
+    indianCompanies: ['Skyroot Aerospace', 'Agnikul Cosmos', 'Pixxel']
+  },
+  Consumer: {
+    indiaImpact: 'Medium',
+    indiaWhy: 'India\'s 300M+ middle class and rising smart home adoption are opening early-stage consumer robotics demand in metro and Tier-1 markets.',
+    indianCompanies: ['Milagrow Robots', 'Aqara India', 'Robosapiens India']
+  },
+  Semiconductor: {
+    indiaImpact: 'High',
+    indiaWhy: 'India Semiconductor Mission ($10B) and Tata/Micron fab investments are building domestic chip packaging and ATMP capacity at pace.',
+    indianCompanies: ['Tata Electronics', 'CG Power', 'Kaynes Technology']
+  },
+  Manufacturing: {
+    indiaImpact: 'High',
+    indiaWhy: 'PLI schemes across 14 sectors and China+1 supply chain realignment are driving rapid cobot and industrial automation adoption in Indian factories.',
+    indianCompanies: ['Jyoti CNC', 'Bharat Forge', 'KUKA India']
+  },
+  'AI & Software': {
+    indiaImpact: 'High',
+    indiaWhy: 'India\'s 5M+ developer base and 1,700+ Global Capability Centres make it the world\'s largest AI software talent and delivery hub.',
+    indianCompanies: ['Persistent Systems', 'Mphasis', 'KPIT Technologies']
+  },
+  General: {
+    indiaImpact: 'Medium',
+    indiaWhy: 'India\'s Digital India mission and 3rd-largest startup ecosystem position it to rapidly absorb and commercialise emerging automation trends.',
+    indianCompanies: ['Tata Consultancy Services', 'Infosys', 'Tech Mahindra']
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // RULE-BASED INSIGHT ENGINE — 2 insights per sector
 // ─────────────────────────────────────────────────────────────────────────────
 const VCL_MAP = {
@@ -232,6 +293,7 @@ function buildInsightsLocally(articles) {
     const confidence      = count >= 5 ? 'High' : count >= 2 ? 'Medium' : 'Low';
     const timeSensitivity = deriveTimeSensitivity(text);
     const vcl             = VCL_MAP[sector] || 'Software & AI';
+    const india           = INDIA_CTX[sector] || INDIA_CTX.General;
 
     // Insight 1 — Structural gap / opportunity
     insights.push({
@@ -247,9 +309,9 @@ function buildInsightsLocally(articles) {
       timeSensitivity,
       momentum,
       dataBasis:       `${count} article${count > 1 ? 's' : ''} from ${sources.join(', ')}.`,
-      indiaImpact:     'Medium',
-      indiaWhy:        'Analysing…',
-      indianCompanies: []
+      indiaImpact:     india.indiaImpact,
+      indiaWhy:        india.indiaWhy,
+      indianCompanies: india.indianCompanies
     });
 
     // Insight 2 — Trend / current cycle signal
@@ -266,9 +328,9 @@ function buildInsightsLocally(articles) {
       timeSensitivity,
       momentum,
       dataBasis:       `Trend derived from ${count} article${count > 1 ? 's' : ''} across ${sources.join(', ')}.`,
-      indiaImpact:     'Medium',
-      indiaWhy:        'Analysing…',
-      indianCompanies: []
+      indiaImpact:     india.indiaImpact,
+      indiaWhy:        india.indiaWhy,
+      indianCompanies: india.indianCompanies
     });
   }
 
@@ -297,26 +359,50 @@ async function callGemini(prompt) {
   return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }
 
+// enrichIndiaContext — rule-based India context is already set; Gemini ENHANCES it
+// with news-specific analysis. If Gemini is unavailable, rule-based data stands.
 async function enrichIndiaContext(insights) {
-  const aiKey = GEMINI_KEY || GROQ_KEY;
-  if (!aiKey || insights.length === 0) return insights;
+  if (!GEMINI_KEY && !GROQ_KEY) {
+    console.log('  → India context: rule-based (no AI key available)');
+    return insights;  // already populated from INDIA_CTX
+  }
+  if (insights.length === 0) return insights;
 
-  const sectors    = [...new Set(insights.map(i => i.sector))].join(', ');
-  const prompt     = `For robotics/automation sectors active in India: ${sectors}
-Return a JSON array. Each item: sector, indiaImpact("High"|"Medium"|"Low"), indiaWhy(1 sentence on India opportunity or risk), indianCompanies(array of 2-3 real Indian company names active in this space).
-JSON array only. No markdown.`;
+  const sectors = [...new Set(insights.map(i => i.sector))];
+  // Build sector+headline summary so Gemini can give news-specific India context
+  const sectorHeadlines = sectors.map(s => {
+    const arts = insights.filter(i => i.sector === s);
+    const headline = arts[0]?.what?.replace(/^.*?top story: "/, '').replace(/"$/, '') || s;
+    return `${s}: ${headline.slice(0, 80)}`;
+  }).join('\n');
+
+  const prompt = `You are an India-focused investment analyst. Based on today's robotics/automation news headlines below, assess India impact for each sector.
+
+Headlines:
+${sectorHeadlines}
+
+Return a JSON array — one object per sector listed. Each object must have:
+- sector: exact name from the list
+- indiaImpact: "High", "Medium", or "Low"
+- indiaWhy: one specific sentence on India opportunity or risk linked to today's news
+- indianCompanies: array of 2-3 real Indian companies active in this sector
+
+JSON array only. No markdown. No explanation.`;
 
   try {
     let text = '';
     if (GEMINI_KEY) {
-      console.log('  → India context via Gemini…');
+      console.log('  → India context via Gemini (news-specific enhancement)…');
       text = await callGemini(prompt);
     } else {
-      console.log('  → India context via Groq (fallback)…');
+      console.log('  → India context via Groq fallback…');
       const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
-        body: JSON.stringify({ model: 'llama-3.3-70b-versatile', max_tokens: 800, temperature: 0.3, messages: [{ role: 'user', content: prompt }] })
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile', max_tokens: 600, temperature: 0.3,
+          messages: [{ role: 'user', content: prompt }]
+        })
       });
       const d = await r.json();
       text = d.choices?.[0]?.message?.content || '';
@@ -325,17 +411,25 @@ JSON array only. No markdown.`;
     const start = text.indexOf('[');
     const end   = text.lastIndexOf(']');
     if (start === -1 || end === -1) throw new Error('No JSON array in AI response');
-    const indiaData = JSON.parse(text.slice(start, end + 1));
+    const aiData = JSON.parse(text.slice(start, end + 1));
 
+    // Merge AI data onto insights; fall back to existing rule-based value if field missing
     return insights.map(ins => {
-      const match = indiaData.find(d => d.sector === ins.sector);
-      if (!match) return ins;
-      return { ...ins, indiaImpact: match.indiaImpact || ins.indiaImpact, indiaWhy: match.indiaWhy || ins.indiaWhy, indianCompanies: match.indianCompanies || [] };
+      const match = aiData.find(d => d.sector === ins.sector);
+      if (!match) return ins;   // keep rule-based India data untouched
+      return {
+        ...ins,
+        indiaImpact:     match.indiaImpact     || ins.indiaImpact,
+        indiaWhy:        match.indiaWhy        || ins.indiaWhy,
+        indianCompanies: (match.indianCompanies && match.indianCompanies.length)
+                           ? match.indianCompanies
+                           : ins.indianCompanies
+      };
     });
 
   } catch (e) {
-    console.error('  ✗ India enrichment error:', e.message);
-    return insights;
+    console.error('  ✗ India AI enrichment failed — keeping rule-based data:', e.message);
+    return insights;  // rule-based data already in place, no "Analysing..." ever
   }
 }
 
