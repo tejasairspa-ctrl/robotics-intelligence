@@ -138,60 +138,148 @@ async function fetchCurrents() {
   }
 }
 
-// ── Groq insight generation ───────────────────────────────────────────────────
-async function generateInsights(articles) {
-  if (!GROQ_KEY) {
-    console.warn('  ⚠ GROQ_API_KEY not set — skipping insight generation');
-    return [];
-  }
-  if (articles.length === 0) return [];
+// ── Rule-based insight engine ─────────────────────────────────────────────────
 
-  // Group headlines by sector
+const VCL_MAP = {
+  Agriculture: 'Software & AI',
+  Defence:     'System Integrators',
+  Logistics:   'Software & AI',
+  Automotive:  'Manufacturers',
+  Healthcare:  'Software & AI',
+  Space:       'System Integrators',
+  Consumer:    'Integration & Services',
+  General:     'Software & AI'
+};
+
+const SECTOR_CONTEXT = {
+  Agriculture: { why: 'Agri-robotics is underpenetrated — software layer over hardware creates high-margin recurring revenue.', action: 'Back AI-native farm intelligence platforms targeting data monetisation over hardware.' },
+  Defence:     { why: 'Defence drone and autonomy spending is accelerating globally with geopolitical tensions rising.', action: 'Evaluate autonomous defence tech and counter-drone system startups with MIL-SPEC credentials.' },
+  Logistics:   { why: 'E-commerce growth drives relentless warehouse automation demand with measurable ROI.', action: 'Target last-mile and warehouse robotics players with proven unit economics.' },
+  Automotive:  { why: 'EV and autonomous vehicle transition is creating new software and sensor supply chain opportunities.', action: 'Back sensor fusion and AV software stack companies as Tier-1 suppliers transition.' },
+  Healthcare:  { why: 'Surgical robotics and AI diagnostics command premium pricing with sticky hospital contracts.', action: 'Focus on AI diagnostics and minimally invasive surgical robotics with FDA clearance.' },
+  Space:       { why: 'Commercial space is scaling rapidly — ground-to-orbit robotics and servicing are structurally unaddressed.', action: 'Invest in on-orbit servicing and mission integration software as launch frequency grows.' },
+  Consumer:    { why: 'Home robotics and AI assistants are crossing the mass-market adoption threshold.', action: 'Target consumer robotics platforms with strong recurring revenue models.' },
+  General:     { why: 'AI and automation are converging across industries, compressing software development cycles.', action: 'Identify cross-sector AI automation platforms with horizontal applicability.' }
+};
+
+function deriveTag(text, count) {
+  if (/fund|invest|deal|contract|billion|raise|launch|award|partner/.test(text)) return 'invest';
+  if (/saturated|commodit|margin pressure|too many players|decline|legacy/.test(text)) return 'saturated';
+  return count >= 3 ? 'invest' : 'watch';
+}
+
+function deriveTimeSensitivity(text) {
+  if (/launch|deploy|announc|sign|award|today|this week|just/.test(text)) return 'Immediate';
+  if (/plan|develop|next year|2027|2028|future|roadmap/.test(text))       return 'Long-term';
+  return 'Emerging';
+}
+
+function buildInsightsLocally(articles) {
   const sectors = {};
   articles.forEach(a => {
     if (!sectors[a.industry]) sectors[a.industry] = [];
-    sectors[a.industry].push(a.title);
+    sectors[a.industry].push(a);
   });
 
-  // Only top 2 headlines per sector to reduce token usage
-  const sectorSummary = Object.entries(sectors)
-    .map(([s, titles]) => `${s}: ${titles.slice(0, 2).join(' | ')}`)
-    .join('\n');
+  const insights = [];
 
-  const prompt = `Investment analyst. Robotics/automation news:\n${sectorSummary}\n\nReturn a JSON array of 5 insights. Each object: tag("invest"|"watch"|"saturated"), title(max 8 words), sector, vcl("Manufacturers"|"Software & AI"|"System Integrators"|"Components & Subsystems"|"Design"|"Semiconductor"|"Integration & Services"), what(1 sentence), why(1 sentence), whyMatters(1 sentence), action(1 sentence), confidence("High"|"Medium"|"Low"), timeSensitivity("Immediate"|"Emerging"|"Long-term"), momentum("high"|"medium"|"low"), dataBasis(1 sentence), indiaImpact("High"|"Medium"|"Low"), indiaWhy(1 sentence).\nJSON array only. No markdown.`;
+  for (const [sector, arts] of Object.entries(sectors)) {
+    const count   = arts.length;
+    const text    = arts.map(a => a.title + ' ' + (a.summary || '')).join(' ').toLowerCase();
+    const sources = [...new Set(arts.map(a => a.source))].slice(0, 3);
+    const topArt  = arts[0];
+    const ctx     = SECTOR_CONTEXT[sector] || SECTOR_CONTEXT.General;
+
+    const tag             = deriveTag(text, count);
+    const momentum        = count >= 4 ? 'high' : count >= 2 ? 'medium' : 'low';
+    const confidence      = count >= 4 ? 'High' : count >= 2 ? 'Medium' : 'Low';
+    const timeSensitivity = deriveTimeSensitivity(text);
+
+    insights.push({
+      tag,
+      title:           `${sector}: ${tag === 'invest' ? 'Strong Signal' : tag === 'saturated' ? 'Crowded Space' : 'Emerging Trend'}`,
+      sector,
+      vcl:             VCL_MAP[sector] || 'Software & AI',
+      what:            `${count} news signal${count > 1 ? 's' : ''} detected — leading story: "${topArt.title.slice(0, 90)}"`,
+      why:             ctx.why,
+      whyMatters:      `${count} corroborating source${count > 1 ? 's' : ''} signal ${momentum} momentum in ${sector} robotics this cycle.`,
+      action:          ctx.action,
+      confidence,
+      timeSensitivity,
+      momentum,
+      dataBasis:       `${count} article${count > 1 ? 's' : ''} from ${sources.join(', ')}.`,
+      indiaImpact:     'Medium',
+      indiaWhy:        'Analysing India context…',
+      indianCompanies: []
+    });
+  }
+
+  // Sort: invest first, then watch, then saturated
+  const order = { invest: 0, watch: 1, saturated: 2 };
+  return insights.sort((a, b) => order[a.tag] - order[b.tag]);
+}
+
+// ── Groq: India context only (~80 tokens input) ───────────────────────────────
+async function enrichIndiaContext(insights) {
+  if (!GROQ_KEY || insights.length === 0) return insights;
+
+  const sectorList = [...new Set(insights.map(i => i.sector))].join(', ');
+  const prompt = `For these sectors: ${sectorList}
+Return a JSON array. Each object: sector, indiaImpact("High"|"Medium"|"Low"), indiaWhy(1 sentence on India opportunity/risk), indianCompanies(array of 2-3 real Indian company names active in this space).
+JSON only.`;
 
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method:  'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${GROQ_KEY}`
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
       body: JSON.stringify({
         model:       'llama-3.3-70b-versatile',
-        max_tokens:  1800,
-        temperature: 0.4,
+        max_tokens:  600,
+        temperature: 0.3,
         messages:    [{ role: 'user', content: prompt }]
       })
     });
 
     if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Groq ${res.status}: ${err}`);
+      const err = await res.json();
+      throw new Error(`Groq ${res.status}: ${err?.error?.message || 'unknown'}`);
     }
 
     const data  = await res.json();
     const text  = data.choices[0].message.content;
-    console.log('  Groq raw response (first 200):', text.slice(0, 200));
     const start = text.indexOf('[');
     const end   = text.lastIndexOf(']');
-    if (start === -1 || end === -1) throw new Error('No JSON array in Groq response');
-    return JSON.parse(text.slice(start, end + 1));
+    if (start === -1 || end === -1) throw new Error('No JSON from Groq');
+
+    const indiaData = JSON.parse(text.slice(start, end + 1));
+
+    // Merge India context into insights
+    return insights.map(ins => {
+      const match = indiaData.find(d => d.sector === ins.sector);
+      if (!match) return ins;
+      return {
+        ...ins,
+        indiaImpact:     match.indiaImpact     || ins.indiaImpact,
+        indiaWhy:        match.indiaWhy        || ins.indiaWhy,
+        indianCompanies: match.indianCompanies || []
+      };
+    });
 
   } catch (e) {
-    console.error('  ✗ Groq error:', e.message);
-    return [];
+    console.error('  ✗ Groq India enrichment error:', e.message);
+    return insights; // return rule-based insights even if Groq fails
   }
+}
+
+async function generateInsights(articles) {
+  if (articles.length === 0) return [];
+  console.log('  → Building rule-based insights…');
+  const insights = buildInsightsLocally(articles);
+  console.log(`  ✓ ${insights.length} rule-based insights built`);
+  console.log('  → Enriching with India context via Groq…');
+  const enriched = await enrichIndiaContext(insights);
+  console.log('  ✓ India context added');
+  return enriched;
 }
 
 // ── Momentum helper ───────────────────────────────────────────────────────────
