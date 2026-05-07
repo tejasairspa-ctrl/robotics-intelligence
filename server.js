@@ -284,6 +284,41 @@ app.get('/api/test-groq', async (req, res) => {
   }
 });
 
+// Full insight generation test — shows raw Groq output and any errors
+app.get('/api/test-insights', async (req, res) => {
+  if (!GROQ_KEY) return res.json({ ok: false, error: 'GROQ_API_KEY not set' });
+  const samplePrompt = `You are an investment analyst. Given this robotics news:
+Defence: AI-powered counter-drone system launched in Hyderabad
+General: Meta launching AI agents for task automation
+Generate exactly 2 investment insights as a JSON array with keys: tag, title, sector, vcl, what, why, whyMatters, action, confidence, timeSensitivity, momentum, dataBasis, indiaImpact, indiaWhy.
+Return ONLY valid JSON array.`;
+  try {
+    const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
+      body: JSON.stringify({
+        model:       'llama-3.3-70b-versatile',
+        max_tokens:  1000,
+        temperature: 0.4,
+        messages:    [{ role: 'user', content: samplePrompt }]
+      })
+    });
+    const data  = await r.json();
+    const text  = data.choices?.[0]?.message?.content || '';
+    const start = text.indexOf('[');
+    const end   = text.lastIndexOf(']');
+    let parsed  = null;
+    let parseError = null;
+    if (start !== -1 && end !== -1) {
+      try { parsed = JSON.parse(text.slice(start, end + 1)); }
+      catch(e) { parseError = e.message; }
+    }
+    res.json({ ok: r.ok, httpStatus: r.status, rawText: text, parsed, parseError, groqError: data.error || null });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 app.post('/api/refresh', async (req, res) => {
   try {
     const data = await refresh();
