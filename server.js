@@ -153,32 +153,12 @@ async function generateInsights(articles) {
     sectors[a.industry].push(a.title);
   });
 
+  // Only top 2 headlines per sector to reduce token usage
   const sectorSummary = Object.entries(sectors)
-    .map(([s, titles]) => `${s}:\n  - ${titles.join('\n  - ')}`)
-    .join('\n\n');
+    .map(([s, titles]) => `${s}: ${titles.slice(0, 2).join(' | ')}`)
+    .join('\n');
 
-  const prompt = `You are a senior investment analyst specialising in robotics and automation.
-
-Live news grouped by sector:
-${sectorSummary}
-
-Generate exactly 5 investment insights as a JSON array. Each object must have these keys:
-  tag            — "invest" | "watch" | "saturated"
-  title          — punchy title, max 10 words
-  sector         — one of: Agriculture / Defence / Logistics / Automotive / Healthcare / Space / Consumer / General
-  vcl            — one of: Manufacturers / Software & AI / System Integrators / Components & Subsystems / Design / Semiconductor / Integration & Services
-  what           — what is happening (1 sentence)
-  why            — why it matters for investors (1 sentence)
-  whyMatters     — the key opportunity or risk (1 sentence)
-  action         — recommended investor action (1 sentence)
-  confidence     — "High" | "Medium" | "Low"
-  timeSensitivity — "Immediate" | "Emerging" | "Long-term"
-  momentum       — "high" | "medium" | "low"
-  dataBasis      — what data supports this (1 sentence)
-  indiaImpact    — "High" | "Medium" | "Low"
-  indiaWhy       — India relevance (1 sentence)
-
-Return ONLY a valid JSON array. No markdown, no explanation.`;
+  const prompt = `Investment analyst. Robotics/automation news:\n${sectorSummary}\n\nReturn a JSON array of 5 insights. Each object: tag("invest"|"watch"|"saturated"), title(max 8 words), sector, vcl("Manufacturers"|"Software & AI"|"System Integrators"|"Components & Subsystems"|"Design"|"Semiconductor"|"Integration & Services"), what(1 sentence), why(1 sentence), whyMatters(1 sentence), action(1 sentence), confidence("High"|"Medium"|"Low"), timeSensitivity("Immediate"|"Emerging"|"Long-term"), momentum("high"|"medium"|"low"), dataBasis(1 sentence), indiaImpact("High"|"Medium"|"Low"), indiaWhy(1 sentence).\nJSON array only. No markdown.`;
 
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -188,10 +168,10 @@ Return ONLY a valid JSON array. No markdown, no explanation.`;
         'Authorization': `Bearer ${GROQ_KEY}`
       },
       body: JSON.stringify({
-        model:      'llama-3.3-70b-versatile',
-        max_tokens: 2500,
+        model:       'llama-3.3-70b-versatile',
+        max_tokens:  1800,
         temperature: 0.4,
-        messages: [{ role: 'user', content: prompt }]
+        messages:    [{ role: 'user', content: prompt }]
       })
     });
 
@@ -338,8 +318,8 @@ app.post('/api/auto-refresh', (req, res) => {
   res.json({ ok: true });
 });
 
-// ── Cron — auto-refresh every 20 minutes ─────────────────────────────────────
-cron.schedule('*/20 * * * *', () => {
+// ── Cron — auto-refresh every 2 hours (saves Groq token quota) ───────────────
+cron.schedule('0 */2 * * *', () => {
   refresh().catch(e => console.error('Cron error:', e.message));
 });
 
