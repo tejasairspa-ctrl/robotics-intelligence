@@ -13,6 +13,54 @@
   --green:#059669;--yellow:#d97706;--red:#dc2626;--teal:#0891b2;
   --radius:10px;--font:'Inter',system-ui,sans-serif;
 }
+/* ── DARK MODE ────────────────────────────────────────────────────────────── */
+body.dark{
+  --bg:#07090f;--surface:#0f1623;--surface2:#161e2e;--border:#1e2d45;
+  --text:#e2e8f0;--muted:#64748b;--accent:#6366f1;--accent2:#818cf8;
+  --green:#10b981;--yellow:#f59e0b;--red:#ef4444;--teal:#06b6d4;
+}
+body.dark .logo-title,body.dark .card-value,body.dark .page-title,
+body.dark .card-h,body.dark .insight-title,body.dark .company-name,
+body.dark .query-answer,body.dark .modal-title,body.dark .section-title,
+body.dark .signal-title,body.dark .premium-cta-title{color:#fff}
+body.dark .tag-invest{background:rgba(16,185,129,.15);color:#34d399;border-color:rgba(16,185,129,.25)}
+body.dark .tag-watch{background:rgba(245,158,11,.15);color:#fbbf24;border-color:rgba(245,158,11,.25)}
+body.dark .tag-saturated{background:rgba(239,68,68,.15);color:#f87171;border-color:rgba(239,68,68,.25)}
+body.dark .tag-premium{color:#a78bfa}
+body.dark .signal-badge.invest{background:rgba(16,185,129,.15);color:#34d399}
+body.dark .signal-badge.watch{background:rgba(245,158,11,.15);color:#fbbf24}
+body.dark .signal-badge.saturated{background:rgba(239,68,68,.15);color:#f87171}
+body.dark .trend-hot{background:rgba(16,185,129,.15);color:#34d399}
+body.dark .trend-warm{background:rgba(245,158,11,.15);color:#fbbf24}
+body.dark .hm-1,body.dark .hm-2{color:#fbbf24}
+body.dark .hm-3,body.dark .hm-4{color:#818cf8}
+body.dark .hm-5,body.dark .hm-6{color:#34d399}
+body.dark .hm-7,body.dark .hm-8{color:#10b981}
+body.dark .hm-9plus{color:#047857}
+body.dark .tooltip{background:#1e293b;border-color:var(--border);color:var(--text)}
+body.dark .premium-overlay{background:linear-gradient(180deg,transparent 30%,rgba(7,9,15,.95) 60%,rgba(7,9,15,1) 100%)}
+body.dark .momentum-row{border-color:rgba(30,45,69,.4)}
+body.dark .query-data-row{border-color:rgba(30,45,69,.5)}
+body.dark .company-table td{border-color:rgba(30,45,69,.5)}
+body.dark .conf-high{color:#34d399}
+body.dark .conf-medium{color:#fbbf24}
+body.dark .time-immediate{color:#f87171}
+body.dark .time-emerging{color:#fbbf24}
+body.dark .time-longterm{color:#818cf8}
+body.dark .company-rec-name{color:#fff}
+body.dark .rec-leader{color:#34d399}
+body.dark .rec-emerging{color:#818cf8}
+body.dark .india-high{color:#34d399}
+body.dark .india-medium{color:#fbbf24}
+/* ── THEME TOGGLE ──────────────────────────────────────────────────────────── */
+.theme-toggle{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;margin-bottom:10px;transition:all .15s;user-select:none}
+.theme-toggle:hover{border-color:var(--accent)}
+.theme-toggle-label{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--text)}
+.theme-toggle-label svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0}
+.theme-switch{width:32px;height:18px;background:var(--border);border-radius:9px;position:relative;transition:background .22s;flex-shrink:0}
+.theme-switch::after{content:'';position:absolute;top:3px;left:3px;width:12px;height:12px;border-radius:50%;background:#fff;transition:transform .22s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+body.dark .theme-switch{background:var(--accent)}
+body.dark .theme-switch::after{transform:translateX(14px)}
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;overflow:hidden}
 a{color:inherit;text-decoration:none}
 
@@ -654,6 +702,15 @@ a{color:inherit;text-decoration:none}
     </div>
   </nav>
   <div class="sidebar-footer">
+    <div class="theme-toggle" onclick="toggleTheme()" title="Toggle dark / light mode">
+      <div class="theme-toggle-label" id="theme-label">
+        <!-- icon swapped by JS -->
+        <svg id="theme-icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg id="theme-icon-moon" viewBox="0 0 24 24" style="display:none"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/></svg>
+        <span id="theme-text">Light Mode</span>
+      </div>
+      <div class="theme-switch"></div>
+    </div>
     <div class="premium-badge">
       PREMIUM INTELLIGENCE
       <span>Investor-Grade Insights</span>
@@ -729,6 +786,35 @@ function enterPlatform() {
     const el = document.getElementById('landing');
     if (el) el.style.display = 'none';
   }
+})();
+
+// ===================== THEME TOGGLE =====================
+function applyTheme(dark) {
+  document.body.classList.toggle('dark', dark);
+  const sunIcon  = document.getElementById('theme-icon-sun');
+  const moonIcon = document.getElementById('theme-icon-moon');
+  const label    = document.getElementById('theme-text');
+  if (dark) {
+    sunIcon.style.display  = 'none';
+    moonIcon.style.display = '';
+    label.textContent      = 'Dark Mode';
+  } else {
+    sunIcon.style.display  = '';
+    moonIcon.style.display = 'none';
+    label.textContent      = 'Light Mode';
+  }
+}
+
+function toggleTheme() {
+  const isDark = !document.body.classList.contains('dark');
+  localStorage.setItem('roboIntelTheme', isDark ? 'dark' : 'light');
+  applyTheme(isDark);
+}
+
+// Apply saved theme on load
+(function() {
+  const saved = localStorage.getItem('roboIntelTheme');
+  if (saved === 'dark') applyTheme(true);
 })();
 
 // ===================== DATA =====================
