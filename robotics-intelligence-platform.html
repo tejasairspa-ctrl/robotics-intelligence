@@ -381,6 +381,88 @@ a{color:inherit;text-decoration:none}
 .live-insights-panel{background:rgba(6,182,212,.04);border:1px solid rgba(6,182,212,.2);border-radius:10px;padding:16px;margin-top:6px}
 .live-insights-empty{display:flex;align-items:center;gap:10px;padding:4px 0;font-size:12px;color:var(--muted)}
 
+/* ── UPGRADE: CONFIDENCE BAR ─────────────────────────────────────────────── */
+.conf-score-wrap{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.conf-score-num{font-size:13px;font-weight:800;min-width:32px;color:var(--text)}
+.conf-bar-track{flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.conf-bar-fill{height:100%;border-radius:3px;transition:width .5s ease}
+.conf-fill-very-high{background:linear-gradient(90deg,#059669,#10b981)}
+.conf-fill-high{background:linear-gradient(90deg,#0891b2,#06b6d4)}
+.conf-fill-medium{background:linear-gradient(90deg,#d97706,#f59e0b)}
+.conf-fill-low{background:linear-gradient(90deg,#64748b,#94a3b8)}
+.conf-label-vh{color:#059669}.conf-label-h{color:#0891b2}.conf-label-m{color:#d97706}.conf-label-l{color:#64748b}
+
+/* ── UPGRADE: SIGNAL EVOLUTION ───────────────────────────────────────────── */
+.evolution-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:5px;font-size:10px;font-weight:700;letter-spacing:.3px;background:var(--surface2);border:1px solid var(--border)}
+.evo-accel{background:rgba(5,150,105,.1);border-color:rgba(5,150,105,.3);color:#059669}
+.evo-weak{background:rgba(220,38,38,.08);border-color:rgba(220,38,38,.25);color:#dc2626}
+.evo-stable{background:var(--surface2);border-color:var(--border);color:var(--muted)}
+.evo-new{background:rgba(99,102,241,.1);border-color:rgba(99,102,241,.3);color:#6366f1}
+.evo-changed{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);color:#d97706}
+
+/* ── UPGRADE: WHY THIS MATTERS ───────────────────────────────────────────── */
+.why-block{background:linear-gradient(135deg,rgba(79,70,229,.06),rgba(8,145,178,.04));border:1px solid rgba(99,102,241,.2);border-left:3px solid #6366f1;border-radius:0 8px 8px 0;padding:12px 14px;margin:12px 0}
+.why-block-label{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#6366f1;margin-bottom:5px;display:flex;align-items:center;gap:5px}
+.why-block-text{font-size:12px;color:var(--text);line-height:1.7;font-weight:400}
+
+/* ── UPGRADE: NEXT TO WATCH ──────────────────────────────────────────────── */
+.watch-next-block{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-top:10px}
+.watch-next-label{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--teal);margin-bottom:8px;display:flex;align-items:center;gap:5px}
+.watch-next-list{display:flex;flex-wrap:wrap;gap:5px}
+.watch-next-item{padding:3px 9px;background:rgba(8,145,178,.08);border:1px solid rgba(8,145,178,.2);border-radius:4px;font-size:10px;font-weight:600;color:var(--teal)}
+
+/* ── UPGRADE: THREAT INTELLIGENCE ───────────────────────────────────────── */
+.threat-block{background:rgba(220,38,38,.04);border:1px solid rgba(220,38,38,.18);border-left:3px solid #dc2626;border-radius:0 8px 8px 0;padding:10px 14px;margin-top:10px}
+.threat-label{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#dc2626;margin-bottom:4px;display:flex;align-items:center;gap:5px}
+.threat-text{font-size:11px;color:var(--muted);line-height:1.65}
+
+/* ── UPGRADE: TIME HORIZON BADGE ─────────────────────────────────────────── */
+.time-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:5px;font-size:10px;font-weight:700;letter-spacing:.3px;border:1px solid}
+.time-immediate{background:rgba(220,38,38,.08);color:#dc2626;border-color:rgba(220,38,38,.25)}
+.time-short{background:rgba(245,158,11,.08);color:#d97706;border-color:rgba(245,158,11,.25)}
+.time-medium{background:rgba(99,102,241,.08);color:#6366f1;border-color:rgba(99,102,241,.25)}
+.time-structural{background:rgba(8,145,178,.08);color:#0891b2;border-color:rgba(8,145,178,.25)}
+.time-secular{background:rgba(139,92,246,.08);color:#7c3aed;border-color:rgba(139,92,246,.25)}
+
+/* ── UPGRADE: PRIORITY SCORES ────────────────────────────────────────────── */
+.priority-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.priority-item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;min-width:64px}
+.priority-val{font-size:14px;font-weight:800;color:var(--text);line-height:1}
+.priority-lbl{font-size:9px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px;text-align:center}
+.priority-sat-risk{background:rgba(220,38,38,.06);border-color:rgba(220,38,38,.2)}
+.priority-sat-risk .priority-val{color:#dc2626}
+
+/* ── UPGRADE: SIGNAL STRENGTH VIZ ───────────────────────────────────────── */
+.strength-meter{display:flex;align-items:center;gap:6px;margin:8px 0 4px}
+.strength-bars{display:flex;gap:2px;align-items:flex-end}
+.strength-bar{width:5px;border-radius:2px;background:var(--border)}
+.strength-bar.active-high{background:#059669}
+.strength-bar.active-medium{background:#d97706}
+.strength-bar.active-low{background:#6366f1}
+.strength-arrow{font-size:12px;font-weight:700}
+.arrow-up{color:#059669}.arrow-down{color:#dc2626}.arrow-flat{color:var(--muted)}
+.strength-label{font-size:10px;color:var(--muted);font-weight:600}
+
+/* ── UPGRADE: NARRATIVE CLUSTER HEADER ──────────────────────────────────── */
+.narrative-cluster-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:8px}
+.narrative-cluster-card:hover{border-color:rgba(99,102,241,.3)}
+.narrative-cluster-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px}
+.narrative-cluster-name{font-size:13px;font-weight:700;color:var(--text)}
+.narrative-cluster-desc{font-size:11px;color:var(--muted);line-height:1.65;margin-bottom:10px}
+.narrative-cluster-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.narrative-sector-chip{padding:2px 8px;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-radius:4px;font-size:10px;font-weight:600;color:#6366f1}
+.narrative-strength-bar{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden;min-width:80px}
+.narrative-strength-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,#6366f1,#0891b2)}
+
+/* ── UPGRADE: WEAK SIGNAL CARD ───────────────────────────────────────────── */
+.weak-signal-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid #7c3aed;border-radius:0 10px 10px 0;padding:14px 16px;transition:border-color .2s}
+.weak-signal-card:hover{border-color:rgba(124,58,237,.4)}
+.weak-signal-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.weak-signal-badge{padding:2px 8px;background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.3);border-radius:4px;font-size:9px;font-weight:800;color:#7c3aed;letter-spacing:.5px;text-transform:uppercase}
+.weak-signal-type{padding:2px 7px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;font-size:9px;font-weight:600;color:var(--muted)}
+.weak-signal-title{font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px}
+.weak-signal-headline{font-size:11px;color:var(--muted);line-height:1.55;font-style:italic}
+
 /* ─── LANDING PAGE — single viewport, no scroll ──────────────────────────── */
 #landing{
   position:fixed;inset:0;z-index:9999;
@@ -1476,6 +1558,32 @@ function renderOpportunity() {
     <div id="insight-grid" style="display:flex;flex-direction:column;gap:14px;margin-top:12px"></div>
   </div>
 
+  <!-- NARRATIVE INTELLIGENCE (Upgrade 10) -->
+  <div class="section" id="narrative-section" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div class="section-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Narrative Intelligence
+        <span style="font-size:10px;color:var(--muted);font-weight:400">· Thematic signal clusters</span>
+      </div>
+    </div>
+    <div class="section-sub">Connected thematic narratives tracking how strategic themes evolve across sectors — beyond individual signals</div>
+    <div id="narrative-grid" style="display:flex;flex-direction:column;gap:10px;margin-top:12px"></div>
+  </div>
+
+  <!-- WEAK SIGNALS (Upgrade 6) -->
+  <div class="section" id="weak-signals-section" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div class="section-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        Early Reconnaissance
+        <span style="font-size:10px;color:var(--muted);font-weight:400">· Weak signals below mainstream threshold</span>
+      </div>
+    </div>
+    <div class="section-sub">Pre-signal intelligence — patent activity, funding clusters, talent signals and prototype-stage developments before mainstream momentum forms</div>
+    <div id="weak-signals-grid" style="display:flex;flex-direction:column;gap:8px;margin-top:12px"></div>
+  </div>
+
   <div class="section" id="news-feed-section">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
       <div class="section-title">
@@ -1507,42 +1615,223 @@ function renderOpportunity() {
   } else if (filteredInsights.length === 0) {
     grid.innerHTML = `<div class="empty">No ${selectedSector} insights in this refresh. Select "All Sectors" or click Refresh to fetch more.</div>`;
   } else {
-    const confBars = (level) => {
-      const lit = level==='High'?3:level==='Medium'?2:1;
-      const barColor = level==='High'?'lit-green':level==='Medium'?'lit-yellow':'lit-gray';
+
+    // ── Helpers ────────────────────────────────────────────────────────────
+    const confFillClass = l => l==='Very High'?'conf-fill-very-high':l==='High'?'conf-fill-high':l==='Medium'?'conf-fill-medium':'conf-fill-low';
+    const confLabelClass= l => l==='Very High'?'conf-label-vh':l==='High'?'conf-label-h':l==='Medium'?'conf-label-m':'conf-label-l';
+    const confBars      = (level) => {
+      const lit = level==='Very High'?3:level==='High'?3:level==='Medium'?2:1;
+      const barColor = level==='Very High'||level==='High'?'lit-green':level==='Medium'?'lit-yellow':'lit-gray';
       return `<div class="conf-indicator">${[1,2,3].map(i=>`<div class="conf-bar${i<=lit?' '+barColor:''}"></div>`).join('')}</div>`;
     };
-    const confClass = l => l==='High'?'conf-high':l==='Medium'?'conf-medium':'conf-low';
-    const timeClass = t => t==='Immediate'?'time-immediate':t==='Emerging'?'time-emerging':'time-longterm';
-    const timeIcon  = t => t==='Immediate'?'⚡':t==='Emerging'?'📈':'🔭';
+    const timeClass = t => {
+      if (t==='Immediate') return 'time-immediate';
+      if (t==='Short-Term') return 'time-short';
+      if (t==='Medium-Term') return 'time-medium';
+      if (t==='Long-Term Secular') return 'time-secular';
+      return 'time-structural';
+    };
+    const timeIcon = t => t==='Immediate'?'⚡':t==='Short-Term'?'📅':t==='Medium-Term'?'📈':t==='Long-Term Secular'?'🔭':'🏗';
+
+    const strengthViz = (momentum, score) => {
+      const heights = [6, 10, 14, 18];
+      const activeClass = momentum==='high'?'active-high':momentum==='medium'?'active-medium':'active-low';
+      const activeBars = score >= 75 ? 4 : score >= 55 ? 3 : score >= 35 ? 2 : 1;
+      const bars = heights.map((h, i) =>
+        `<div class="strength-bar${i < activeBars ? ' ' + activeClass : ''}" style="height:${h}px"></div>`
+      ).join('');
+      const arrow = momentum==='high' ? '<span class="strength-arrow arrow-up">↑</span>'
+                  : momentum==='low'  ? '<span class="strength-arrow arrow-down">↓</span>'
+                  : '<span class="strength-arrow arrow-flat">→</span>';
+      return `<div class="strength-meter"><div class="strength-bars">${bars}</div>${arrow}<span class="strength-label">${momentum.charAt(0).toUpperCase()+momentum.slice(1)} Momentum</span></div>`;
+    };
+
+    const evolutionBadge = (evo) => {
+      if (!evo) return `<span class="evolution-badge evo-new">🆕 First Detection</span>`;
+      if (evo.tagChanged)
+        return `<span class="evolution-badge evo-changed">⚡ ${evo.prevTag.toUpperCase()} → ${evo.currentTag.toUpperCase()}</span>`;
+      if (evo.trend === 'accelerating')
+        return `<span class="evolution-badge evo-accel">↑ Accelerating · +${evo.scoreDelta}pts</span>`;
+      if (evo.trend === 'weakening')
+        return `<span class="evolution-badge evo-weak">↓ Weakening · ${evo.scoreDelta}pts</span>`;
+      return `<span class="evolution-badge evo-stable">→ Stable · ${evo.cycles} cycles</span>`;
+    };
+
+    const ageLabel = (evo, firstSeen) => {
+      if (!evo || !firstSeen) return '';
+      const hours = Math.round((Date.now() - firstSeen) / 3600000);
+      if (hours < 3)   return 'New this cycle';
+      if (hours < 24)  return `${hours}h ago`;
+      return `${Math.round(hours/24)}d tracked`;
+    };
 
     filteredInsights.forEach((ins) => {
       const el = document.createElement('div');
       el.className = `signal-card ${ins.tag}`;
-      el.style.cssText = `border-top:2px solid ${ins.tag==='invest'?'#10b981':ins.tag==='watch'?'#f59e0b':'#ef4444'}`;
+      const borderColor = ins.tag==='invest'?'#10b981':ins.tag==='watch'?'#f59e0b':'#ef4444';
+      el.style.cssText  = `border-top:2px solid ${borderColor}`;
+      const score = ins.confidenceScore || 50;
 
       el.innerHTML = `
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <span class="signal-badge ${ins.tag}">${ins.tag==='invest'?'🟢 INVEST':ins.tag==='watch'?'🟡 WATCH':'🔴 SATURATED'}</span>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <!-- Row 1: badge + tags + evolution -->
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+            <span class="signal-badge ${ins.tag}">${ins.tag==='invest'?'🟢 INVEST':ins.tag==='watch'?'🟡 WATCH':'🔴 SATURATED'}</span>
+            ${evolutionBadge(ins.evolution)}
+          </div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center">
             ${ins.sector?`<span class="signal-tag">${ins.sector}</span>`:''}
             ${ins.vcl?`<span class="signal-tag">${ins.vcl}</span>`:''}
-            ${ins.momentum?`<span class="signal-tag" style="background:rgba(6,182,212,.1);color:var(--teal)">${ins.momentum} momentum</span>`:''}
+            ${ins.timeHorizon?`<span class="time-badge ${timeClass(ins.timeHorizon.label)}">${timeIcon(ins.timeHorizon.label)} ${ins.timeHorizon.label}</span>`:''}
           </div>
         </div>
+
+        <!-- Title -->
         <div class="signal-title">${ins.title}</div>
-        ${ins.whyMatters?`<div style="margin:8px 0;padding:8px 10px;background:rgba(99,102,241,.08);border-left:2px solid #6366f1;border-radius:4px;font-size:12px;color:#a5b4fc">💡 ${ins.whyMatters}</div>`:''}
-        ${ins.what?`<div class="signal-body" style="margin-top:4px">${ins.what}</div>`:''}
-        ${ins.why?`<div class="signal-body" style="margin-top:3px;color:#94a3b8">${ins.why}</div>`:''}
-        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-          <span class="score-pill ${confClass(ins.confidence)}">${confBars(ins.confidence)} Confidence: ${ins.confidence}</span>
-          <span class="score-pill ${timeClass(ins.timeSensitivity)}">${timeIcon(ins.timeSensitivity)} ${ins.timeSensitivity}</span>
+
+        <!-- Signal strength + age -->
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
+          ${strengthViz(ins.momentum || 'medium', score)}
+          ${ins.firstSeen ? `<span style="font-size:10px;color:var(--muted)">${ageLabel(ins.evolution, ins.firstSeen)}</span>` : ''}
         </div>
-        ${ins.dataBasis?`<div class="databasis-block" style="margin-top:10px"><strong>📊 Data Basis —</strong> ${ins.dataBasis}</div>`:''}
-        <div class="signal-action">→ ${ins.action||''}</div>
-        ${ins.indiaImpact?`<div style="margin-top:10px;padding:8px 10px;background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.2);border-radius:6px;font-size:11px"><span style="font-weight:700;color:#34d399">🇮🇳 India Impact: ${ins.indiaImpact}</span>${ins.indiaWhy?` — <span style="color:var(--muted)">${ins.indiaWhy}</span>`:''}</div>`:''}`;
+
+        <!-- Confidence score bar -->
+        <div style="margin:10px 0 6px">
+          <div class="conf-score-wrap">
+            <span class="conf-score-num ${confLabelClass(ins.confidence)}">${score}</span>
+            <div class="conf-bar-track"><div class="conf-bar-fill ${confFillClass(ins.confidence)}" style="width:${score}%"></div></div>
+            <span style="font-size:10px;font-weight:700;${confLabelClass(ins.confidence)?'':''}class="${confLabelClass(ins.confidence)}">${ins.confidence} Confidence</span>
+          </div>
+        </div>
+
+        <!-- What / Why -->
+        ${ins.what ? `<div class="signal-body" style="margin-top:4px">${ins.what}</div>` : ''}
+        ${ins.why  ? `<div class="signal-body" style="margin-top:3px;opacity:.8">${ins.why}</div>` : ''}
+
+        <!-- WHY THIS MATTERS (Upgrade 1) -->
+        ${ins.whyThisMatters ? `
+        <div class="why-block">
+          <div class="why-block-label">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Why This Matters
+          </div>
+          <div class="why-block-text">${ins.whyThisMatters}</div>
+        </div>` : ''}
+
+        <!-- Action -->
+        <div class="signal-action">→ ${ins.action || ''}</div>
+
+        <!-- NEXT TO WATCH (Upgrade 5) -->
+        ${ins.watchNext && ins.watchNext.length ? `
+        <div class="watch-next-block">
+          <div class="watch-next-label">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Watch Next
+          </div>
+          <div class="watch-next-list">${ins.watchNext.map(w => `<span class="watch-next-item">${w}</span>`).join('')}</div>
+        </div>` : ''}
+
+        <!-- PRIORITY SCORES (Upgrade 9) -->
+        ${ins.strategicScore != null ? `
+        <div class="priority-row">
+          <div class="priority-item"><div class="priority-val">${ins.strategicScore}</div><div class="priority-lbl">Strategic</div></div>
+          <div class="priority-item"><div class="priority-val">${ins.indiaScore}</div><div class="priority-lbl">India</div></div>
+          <div class="priority-item"><div class="priority-val">${ins.investmentScore}</div><div class="priority-lbl">Investment</div></div>
+          <div class="priority-item priority-sat-risk"><div class="priority-val">${ins.saturationRisk}</div><div class="priority-lbl">Sat. Risk</div></div>
+        </div>` : ''}
+
+        <!-- Data basis -->
+        ${ins.dataBasis ? `<div class="databasis-block" style="margin-top:10px"><strong>📊 Data Basis —</strong> ${ins.dataBasis}</div>` : ''}
+
+        <!-- India Impact -->
+        ${ins.indiaImpact ? `
+        <div style="margin-top:10px;padding:8px 12px;background:rgba(251,146,60,.05);border:1px solid rgba(251,146,60,.2);border-radius:6px;font-size:11px">
+          <div style="font-weight:700;color:#fb923c;margin-bottom:3px">🇮🇳 India Impact: ${ins.indiaImpact}</div>
+          ${ins.indiaWhy ? `<div style="color:var(--muted);line-height:1.6">${ins.indiaWhy}</div>` : ''}
+          ${ins.indianCompanies && ins.indianCompanies.length ? `
+          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px">
+            ${ins.indianCompanies.map(c => `<span class="india-co-chip">${c}</span>`).join('')}
+          </div>` : ''}
+        </div>` : ''}
+
+        <!-- THREAT INTELLIGENCE (Upgrade 8) -->
+        ${ins.threats ? `
+        <div class="threat-block">
+          <div class="threat-label">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Threat Intelligence
+          </div>
+          <div class="threat-text">${ins.threats}</div>
+        </div>` : ''}
+      `;
       grid.appendChild(el);
     });
+  }
+
+  // ── Narrative Intelligence (Upgrade 10) ────────────────────────────────────
+  const narratives = liveData.narratives || [];
+  const narSection = document.getElementById('narrative-section');
+  if (narSection && narratives.length > 0) {
+    narSection.style.display = '';
+    const narGrid = document.getElementById('narrative-grid');
+    narGrid.innerHTML = narratives.map(n => {
+      const strengthPct = n.confidenceScore || 50;
+      const momColor    = n.momentum==='high'?'#059669':n.momentum==='medium'?'#d97706':'#64748b';
+      const sigColor    = n.signal==='invest'?'#059669':'#d97706';
+      return `
+      <div class="narrative-cluster-card">
+        <div class="narrative-cluster-top">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+              <div class="narrative-cluster-name">${n.name}</div>
+              <span style="font-size:10px;font-weight:700;padding:2px 7px;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-radius:4px;color:#6366f1">${n.narrativeStrength}</span>
+            </div>
+            <div class="narrative-cluster-desc">${n.description}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:20px;font-weight:800;color:var(--text);line-height:1">${n.confidenceScore}</div>
+            <div style="font-size:9px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px">Confidence</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <div class="narrative-strength-bar" style="flex:1">
+            <div class="narrative-strength-fill" style="width:${strengthPct}%"></div>
+          </div>
+          <span style="font-size:10px;font-weight:700;color:${momColor}">${n.momentum.toUpperCase()} MOMENTUM</span>
+          <span style="font-size:10px;font-weight:700;color:${sigColor}">${n.investSignals} INVEST</span>
+        </div>
+        <div class="narrative-cluster-meta">
+          ${n.activeSectors.map(s => `<span class="narrative-sector-chip">${s}</span>`).join('')}
+          <span style="font-size:10px;color:var(--muted);margin-left:4px">${n.activeSectors.length}/${n.totalSectors} sectors active</span>
+        </div>
+      </div>`;
+    }).join('');
+  } else if (narSection) {
+    narSection.style.display = 'none';
+  }
+
+  // ── Weak Signals (Upgrade 6) ────────────────────────────────────────────────
+  const weakSignals  = liveData.weakSignals || [];
+  const weakSection  = document.getElementById('weak-signals-section');
+  if (weakSection && weakSignals.length > 0) {
+    weakSection.style.display = '';
+    const weakGrid = document.getElementById('weak-signals-grid');
+    weakGrid.innerHTML = weakSignals.map(ws => `
+      <div class="weak-signal-card">
+        <div class="weak-signal-header">
+          <span class="weak-signal-badge">⚠ Weak Signal</span>
+          ${ws.signalTypes.map(t => `<span class="weak-signal-type">${t}</span>`).join('')}
+          <span style="margin-left:auto;font-size:10px;color:#7c3aed;font-weight:700">${ws.confidenceScore} confidence</span>
+        </div>
+        <div class="weak-signal-title">${ws.title}</div>
+        <div class="weak-signal-headline">"${ws.headline}"</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;flex-wrap:wrap;gap:6px">
+          <span style="font-size:10px;color:var(--muted)">${ws.description}</span>
+          ${ws.indiaImpact ? `<span style="font-size:10px;font-weight:600;color:#fb923c">🇮🇳 ${ws.indiaImpact} India relevance</span>` : ''}
+        </div>
+      </div>`).join('');
+  } else if (weakSection) {
+    weakSection.style.display = 'none';
   }
 
   loadDebugPanel();

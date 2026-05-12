@@ -13,10 +13,15 @@ const GNEWS_KEY    = process.env.GNEWS_KEY        || '';
 const NEWSDATA_KEY = process.env.NEWSDATA_KEY     || '';
 const CURRENTS_KEY = process.env.CURRENTS_API_KEY || '';
 const GEMINI_KEY   = process.env.GEMINI_API_KEY   || '';
-const GROQ_KEY     = process.env.GROQ_API_KEY     || '';   // kept as fallback
+const GROQ_KEY     = process.env.GROQ_API_KEY     || '';
 
 // ── In-memory cache ───────────────────────────────────────────────────────────
-let cache = { articles: [], insights: [], momentum: {}, generatedAt: null };
+let cache = { articles: [], insights: [], weakSignals: [], narratives: [], momentum: {}, generatedAt: null };
+
+// ── Signal evolution memory — persists across refreshes ──────────────────────
+// key: `${sector}-${type}` (e.g. "Defence-structural")
+// value: { firstSeen, history: [{ ts, tag, confidenceScore, momentum, articleCount }] }
+let signalMemory = {};
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(cors());
@@ -38,7 +43,7 @@ app.get('/api/status', (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SECTOR CLASSIFIER — broad keyword coverage
+// SECTOR CLASSIFIER
 // ─────────────────────────────────────────────────────────────────────────────
 function classifyIndustry(text) {
   const t = text.toLowerCase();
@@ -122,7 +127,6 @@ async function fetchCurrents() {
 }
 
 async function fetchGuardian() {
-  // The Guardian — free, no key needed for basic access
   const url = 'https://content.guardianapis.com/search?q=robotics+automation+artificial+intelligence+drone&show-fields=trailText&page-size=10&api-key=test';
   try {
     const res  = await fetch(url);
@@ -135,140 +139,401 @@ async function fetchGuardian() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// RULE-BASED INDIA CONTEXT — always populated, Gemini enhances if available
+// INDIA CONTEXT — rule-based, Gemini enhances
 // ─────────────────────────────────────────────────────────────────────────────
 const INDIA_CTX = {
-  Agriculture: {
-    indiaImpact: 'High',
-    indiaWhy: 'India has 140M+ farmers with low automation penetration — precision agri-robotics has massive greenfield opportunity under PM Kisan and RKVY schemes.',
-    indianCompanies: ['CropIn', 'Intello Labs', 'Fasal']
-  },
-  Defence: {
-    indiaImpact: 'High',
-    indiaWhy: 'India\'s ₹6.2L Cr defence budget and "Make in India" mandate are accelerating domestic drone and autonomous defence system procurement at scale.',
-    indianCompanies: ['ideaForge Technology', 'Data Patterns', 'Alpha Design Technologies']
-  },
-  Logistics: {
-    indiaImpact: 'High',
-    indiaWhy: 'India\'s e-commerce boom (2nd fastest globally) is driving urgent warehouse automation across Tier-1 and Tier-2 cities — ROI proven at 18–24 months.',
-    indianCompanies: ['GreyOrange', 'Addverb Technologies', 'ElasticRun']
-  },
-  Automotive: {
-    indiaImpact: 'High',
-    indiaWhy: 'FAME-II subsidies and EV policy push OEMs toward factory automation — Pune, Chennai and Manesar hubs are rapidly expanding robot density.',
-    indianCompanies: ['Tata Motors', 'Mahindra Electric', 'Ola Electric']
-  },
-  Healthcare: {
-    indiaImpact: 'Medium',
-    indiaWhy: 'India\'s 1:1456 doctor-patient ratio creates acute demand for AI diagnostics and surgical robotics, especially in Tier-2+ cities.',
-    indianCompanies: ['Niramai', 'Sigtuple', 'Qure.ai']
-  },
-  Space: {
-    indiaImpact: 'High',
-    indiaWhy: 'IN-SPACe commercialisation and 150+ space startups make India a fast-growing market — ISRO launch cadence is accelerating satellite demand.',
-    indianCompanies: ['Skyroot Aerospace', 'Agnikul Cosmos', 'Pixxel']
-  },
-  Consumer: {
-    indiaImpact: 'Medium',
-    indiaWhy: 'India\'s 300M+ middle class and rising smart home adoption are opening early-stage consumer robotics demand in metro and Tier-1 markets.',
-    indianCompanies: ['Milagrow Robots', 'Aqara India', 'Robosapiens India']
-  },
-  Semiconductor: {
-    indiaImpact: 'High',
-    indiaWhy: 'India Semiconductor Mission ($10B) and Tata/Micron fab investments are building domestic chip packaging and ATMP capacity at pace.',
-    indianCompanies: ['Tata Electronics', 'CG Power', 'Kaynes Technology']
-  },
-  Manufacturing: {
-    indiaImpact: 'High',
-    indiaWhy: 'PLI schemes across 14 sectors and China+1 supply chain realignment are driving rapid cobot and industrial automation adoption in Indian factories.',
-    indianCompanies: ['Jyoti CNC', 'Bharat Forge', 'KUKA India']
-  },
-  'AI & Software': {
-    indiaImpact: 'High',
-    indiaWhy: 'India\'s 5M+ developer base and 1,700+ Global Capability Centres make it the world\'s largest AI software talent and delivery hub.',
-    indianCompanies: ['Persistent Systems', 'Mphasis', 'KPIT Technologies']
-  },
-  General: {
-    indiaImpact: 'Medium',
-    indiaWhy: 'India\'s Digital India mission and 3rd-largest startup ecosystem position it to rapidly absorb and commercialise emerging automation trends.',
-    indianCompanies: ['Tata Consultancy Services', 'Infosys', 'Tech Mahindra']
-  }
+  Agriculture:    { indiaImpact: 'High',   indiaWhy: 'India has 140M+ farmers with low automation penetration — precision agri-robotics has massive greenfield opportunity under PM Kisan and RKVY schemes.',           indianCompanies: ['CropIn', 'Intello Labs', 'Fasal'] },
+  Defence:        { indiaImpact: 'High',   indiaWhy: 'India\'s ₹6.2L Cr defence budget and "Make in India" mandate are accelerating domestic drone and autonomous defence system procurement at scale.',                indianCompanies: ['ideaForge Technology', 'Data Patterns', 'Alpha Design Technologies'] },
+  Logistics:      { indiaImpact: 'High',   indiaWhy: 'India\'s e-commerce boom (2nd fastest globally) is driving urgent warehouse automation across Tier-1 and Tier-2 cities — ROI proven at 18–24 months.',           indianCompanies: ['GreyOrange', 'Addverb Technologies', 'ElasticRun'] },
+  Automotive:     { indiaImpact: 'High',   indiaWhy: 'FAME-II subsidies and EV policy push OEMs toward factory automation — Pune, Chennai and Manesar hubs are rapidly expanding robot density.',                       indianCompanies: ['Tata Motors', 'Mahindra Electric', 'Ola Electric'] },
+  Healthcare:     { indiaImpact: 'Medium', indiaWhy: 'India\'s 1:1456 doctor-patient ratio creates acute demand for AI diagnostics and surgical robotics, especially in Tier-2+ cities.',                              indianCompanies: ['Niramai', 'Sigtuple', 'Qure.ai'] },
+  Space:          { indiaImpact: 'High',   indiaWhy: 'IN-SPACe commercialisation and 150+ space startups make India a fast-growing market — ISRO launch cadence is accelerating satellite demand.',                     indianCompanies: ['Skyroot Aerospace', 'Agnikul Cosmos', 'Pixxel'] },
+  Consumer:       { indiaImpact: 'Medium', indiaWhy: 'India\'s 300M+ middle class and rising smart home adoption are opening early-stage consumer robotics demand in metro and Tier-1 markets.',                        indianCompanies: ['Milagrow Robots', 'Aqara India', 'Robosapiens India'] },
+  Semiconductor:  { indiaImpact: 'High',   indiaWhy: 'India Semiconductor Mission ($10B) and Tata/Micron fab investments are building domestic chip packaging and ATMP capacity at pace.',                             indianCompanies: ['Tata Electronics', 'CG Power', 'Kaynes Technology'] },
+  Manufacturing:  { indiaImpact: 'High',   indiaWhy: 'PLI schemes across 14 sectors and China+1 supply chain realignment are driving rapid cobot and industrial automation adoption in Indian factories.',              indianCompanies: ['Jyoti CNC', 'Bharat Forge', 'KUKA India'] },
+  'AI & Software':{ indiaImpact: 'High',   indiaWhy: 'India\'s 5M+ developer base and 1,700+ Global Capability Centres make it the world\'s largest AI software talent and delivery hub.',                             indianCompanies: ['Persistent Systems', 'Mphasis', 'KPIT Technologies'] },
+  General:        { indiaImpact: 'Medium', indiaWhy: 'India\'s Digital India mission and 3rd-largest startup ecosystem position it to rapidly absorb and commercialise emerging automation trends.',                    indianCompanies: ['Tata Consultancy Services', 'Infosys', 'Tech Mahindra'] }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// RULE-BASED INSIGHT ENGINE — 2 insights per sector
+// STRATEGIC INTELLIGENCE CONTEXT — per sector
+// Fields: structural, trend, whyThisMatters, watchNext, threats, timeHorizon, narrative, narrativeCluster
 // ─────────────────────────────────────────────────────────────────────────────
 const VCL_MAP = {
-  Agriculture:  'Software & AI',
-  Defence:      'System Integrators',
-  Logistics:    'Software & AI',
-  Automotive:   'Manufacturers',
-  Healthcare:   'Software & AI',
-  Space:        'System Integrators',
-  Consumer:     'Integration & Services',
-  Semiconductor:'Semiconductor',
-  Manufacturing:'Manufacturers',
-  'AI & Software': 'Software & AI',
-  General:      'Software & AI'
+  Agriculture: 'Software & AI', Defence: 'System Integrators', Logistics: 'Software & AI',
+  Automotive: 'Manufacturers', Healthcare: 'Software & AI', Space: 'System Integrators',
+  Consumer: 'Integration & Services', Semiconductor: 'Semiconductor', Manufacturing: 'Manufacturers',
+  'AI & Software': 'Software & AI', General: 'Software & AI'
 };
 
 const SECTOR_CTX = {
-  Agriculture:  {
-    structural: { title: 'Agriculture: Software Layer Unclaimed Over Hardware',   why: 'Hardware is commoditising — AI farm management software captures recurring margin.', action: 'Back AI-native farm intelligence platforms targeting precision farming and yield optimisation.' },
-    trend:      { title: 'Agriculture: Agri-Robotics Adoption Accelerating',       why: 'Government subsidies and labour shortages are driving faster agri-robot deployment.', action: 'Target agri-robotics distributors and sensor network providers in Tier-2 farm markets.' }
+  Agriculture: {
+    structural:      { title: 'Agriculture: Software Layer Unclaimed Over Hardware',   why: 'Hardware is commoditising — AI farm management software captures recurring margin.', action: 'Back AI-native farm intelligence platforms targeting precision farming and yield optimisation.' },
+    trend:           { title: 'Agriculture: Agri-Robotics Adoption Accelerating',       why: 'Government subsidies and labour shortages are driving faster agri-robot deployment.', action: 'Target agri-robotics distributors and sensor network providers in Tier-2 farm markets.' },
+    whyThisMatters:  'Every 1% yield efficiency gain at scale translates to billions in avoided import costs globally. The first platform to own the agri-data layer locks in 10+ year retention — this is not a hardware story, it is a data infrastructure story.',
+    watchNext:       ['cold chain automation providers', 'drone regulatory approvals for crop spraying', 'soil health SaaS adoption in emerging markets', 'precision irrigation sensor supply chains'],
+    threats:         'Land fragmentation across India and Southeast Asia limits large-scale deployment ROI. Weather dependency and subsidised labour artificially suppress automation urgency in key markets.',
+    timeHorizon:     { label: 'Medium-Term', type: 'medium', note: '2–5 year mainstream adoption window' },
+    narrative:       'Agri-Automation Buildout',
+    narrativeCluster: 'Human-Augmentation Systems'
   },
-  Defence:      {
-    structural: { title: 'Defence: Autonomy Spend Structurally Rising',           why: 'Defence drone and counter-drone budgets are compounding 20%+ annually across NATO and Indo-Pacific.', action: 'Evaluate autonomous defence tech startups with dual-use certification and government contracts.' },
-    trend:      { title: 'Defence: Counter-Drone Systems in Demand',              why: 'Geopolitical tensions are accelerating procurement of counter-UAS and electronic warfare systems.', action: 'Focus on counter-drone software and sensor fusion companies with proven field deployment.' }
+  Defence: {
+    structural:      { title: 'Defence: Autonomy Spend Structurally Rising',           why: 'Defence drone and counter-drone budgets are compounding 20%+ annually across NATO and Indo-Pacific.', action: 'Evaluate autonomous defence tech startups with dual-use certification and government contracts.' },
+    trend:           { title: 'Defence: Counter-Drone Systems in Demand',              why: 'Geopolitical tensions are accelerating procurement of counter-UAS and electronic warfare systems.', action: 'Focus on counter-drone software and sensor fusion companies with proven field deployment.' },
+    whyThisMatters:  'Modern conflict has conclusively demonstrated that drone and counter-drone capability is now a baseline requirement — not a differentiator. Nations without autonomous defence infrastructure are structurally exposed. Budget allocation will compound regardless of peacetime pressures.',
+    watchNext:       ['electronic warfare spectrum allocation', 'AI target recognition procurement cycles', 'dual-use robotics export controls', 'defence AI safety regulation timelines'],
+    threats:         'Regulatory uncertainty around autonomous lethal systems could delay procurement. Export control tightening may fragment the global defence robotics supply chain. Hype cycles in defence tech can inflate valuations beyond actual contract visibility.',
+    timeHorizon:     { label: 'Immediate', type: 'immediate', note: 'Active procurement cycles underway' },
+    narrative:       'Defence Autonomy Acceleration',
+    narrativeCluster: 'Strategic & Security Autonomy'
   },
-  Logistics:    {
-    structural: { title: 'Logistics: Warehouse Automation ROI Is Proven',         why: 'E-commerce growth drives 15–20% cost reduction from warehouse robotics — measurable and bankable.', action: 'Target warehouse robotics and WMS software companies with Fortune 500 pilot contracts.' },
-    trend:      { title: 'Logistics: Last-Mile Robotics at Inflection Point',     why: 'Labour cost pressure and delivery density are finally making last-mile robots economically viable.', action: 'Back last-mile autonomous delivery platforms with regulatory approvals in hand.' }
+  Logistics: {
+    structural:      { title: 'Logistics: Warehouse Automation ROI Is Proven',         why: 'E-commerce growth drives 15–20% cost reduction from warehouse robotics — measurable and bankable.', action: 'Target warehouse robotics and WMS software companies with Fortune 500 pilot contracts.' },
+    trend:           { title: 'Logistics: Last-Mile Robotics at Inflection Point',     why: 'Labour cost pressure and delivery density are finally making last-mile robots economically viable.', action: 'Back last-mile autonomous delivery platforms with regulatory approvals in hand.' },
+    whyThisMatters:  'Logistics automation is not cyclical — it is structural. Every warehouse that automates permanently removes labour dependency. Companies that automate now lock in 30–40% cost advantages over competitors who wait. The ROI is proven and the payback period is contracting.',
+    watchNext:       ['autonomous forklift safety certification timelines', 'last-mile regulatory frameworks city-by-city', 'WMS-robotics integration standards', 'dock automation and loading robot adoption'],
+    threats:         'Labour union resistance in key markets could slow adoption in regulated environments. Hardware standardisation lag creates integration friction that erodes software margin. Oversupply of warehouse robotics vendors is compressing hardware pricing.',
+    timeHorizon:     { label: 'Short-Term', type: 'short', note: '6–18 month active deployment window' },
+    narrative:       'E-Commerce Automation Wave',
+    narrativeCluster: 'Industrial Automation Wave'
   },
-  Automotive:   {
-    structural: { title: 'Automotive: EV Software Stack Underbuilt',              why: 'EV transition shifts value from mechanical to software — OEMs are structurally behind on software.', action: 'Back EV software stack and OTA update platform companies supplying multiple OEMs.' },
-    trend:      { title: 'Automotive: AV Sensor Supply Chain Opportunity',        why: 'Autonomous vehicle programmes are scaling sensor procurement with no dominant supplier.', action: 'Invest in lidar and sensor fusion software companies with Tier-1 automotive design wins.' }
+  Automotive: {
+    structural:      { title: 'Automotive: EV Software Stack Underbuilt',              why: 'EV transition shifts value from mechanical to software — OEMs are structurally behind on software.', action: 'Back EV software stack and OTA update platform companies supplying multiple OEMs.' },
+    trend:           { title: 'Automotive: AV Sensor Supply Chain Opportunity',        why: 'Autonomous vehicle programmes are scaling sensor procurement with no dominant supplier.', action: 'Invest in lidar and sensor fusion software companies with Tier-1 automotive design wins.' },
+    whyThisMatters:  'The automotive software stack is now worth more than the chassis — yet most OEMs remain dependent on fragmented Tier-1 supplier ecosystems. The OEM that controls its own software layer controls margins, data, and the consumer relationship. This creates a durable platform opportunity.',
+    watchNext:       ['OTA update platform adoption rates', 'lidar cost curve trajectory', 'SDV standardisation consortia', 'in-vehicle compute architecture consolidation'],
+    threats:         'EV demand cycle volatility is creating capex hesitancy among OEMs. Tesla\'s vertical integration makes it difficult for pure-play software vendors to compete on the same value proposition. AV liability frameworks remain unresolved in major markets.',
+    timeHorizon:     { label: 'Structural', type: 'structural', note: '3–7 year platform consolidation' },
+    narrative:       'SDV Platform Consolidation',
+    narrativeCluster: 'Industrial Automation Wave'
   },
-  Healthcare:   {
-    structural: { title: 'Healthcare: Surgical Robotics Margins Compounding',     why: 'Surgical robotics command 70%+ gross margins with 10-year hospital lock-in contracts.', action: 'Focus on minimally invasive surgical robotics with CE/FDA clearance and recurring consumables.' },
-    trend:      { title: 'Healthcare: AI Diagnostics Replacing Manual Reads',     why: 'AI radiology and pathology tools are achieving specialist-level accuracy at 10% of cost.', action: 'Back AI diagnostic platforms with peer-reviewed validation and payer reimbursement pathways.' }
+  Healthcare: {
+    structural:      { title: 'Healthcare: Surgical Robotics Margins Compounding',     why: 'Surgical robotics command 70%+ gross margins with 10-year hospital lock-in contracts.', action: 'Focus on minimally invasive surgical robotics with CE/FDA clearance and recurring consumables.' },
+    trend:           { title: 'Healthcare: AI Diagnostics Replacing Manual Reads',     why: 'AI radiology and pathology tools are achieving specialist-level accuracy at 10% of cost.', action: 'Back AI diagnostic platforms with peer-reviewed validation and payer reimbursement pathways.' },
+    whyThisMatters:  'AI diagnostics do not just augment clinicians — they structurally alter the economics of healthcare delivery. At scale, AI pathology and radiology reduce diagnostic cost by 60–80%, enabling healthcare systems to address chronic physician shortages without expanding headcount.',
+    watchNext:       ['FDA clearance pipeline for AI diagnostic tools', 'payer reimbursement code expansion', 'surgical robot training hospital partnerships', 'remote robotic surgery 5G infrastructure'],
+    threats:         'Regulatory approval timelines for AI diagnostics remain 24–36 months in most jurisdictions. Liability frameworks for AI-assisted diagnosis are unresolved. Hospital capex cycles are long and resistant to rapid technology replacement.',
+    timeHorizon:     { label: 'Medium-Term', type: 'medium', note: '2–4 year regulatory and adoption cycle' },
+    narrative:       'AI-Augmented Care Delivery',
+    narrativeCluster: 'Human-Augmentation Systems'
   },
-  Space:        {
-    structural: { title: 'Space: Systems Integration Layer Structurally Absent',  why: 'Commercial launches growing past 100/year with zero multi-mission orchestration infrastructure.', action: 'Invest in mission control and systems integration software for commercial space robotics.' },
-    trend:      { title: 'Space: On-Orbit Servicing Demand Emerging',             why: 'Satellite fleet operators need refuelling and repair services as orbital congestion grows.', action: 'Back on-orbit servicing startups with anchor contracts from satellite fleet operators.' }
+  Space: {
+    structural:      { title: 'Space: Systems Integration Layer Structurally Absent',  why: 'Commercial launches growing past 100/year with zero multi-mission orchestration infrastructure.', action: 'Invest in mission control and systems integration software for commercial space robotics.' },
+    trend:           { title: 'Space: On-Orbit Servicing Demand Emerging',             why: 'Satellite fleet operators need refuelling and repair services as orbital congestion grows.', action: 'Back on-orbit servicing startups with anchor contracts from satellite fleet operators.' },
+    whyThisMatters:  'Orbital infrastructure is the next utility layer. Satellites underpin GPS, communications, financial clearing, weather and defence — yet no servicing ecosystem exists. The first credible on-orbit servicing platform creates infrastructure-level lock-in with zero competitive substitutes.',
+    watchNext:       ['ITU spectrum allocation decisions', 'debris removal regulation enforcement', 'in-space manufacturing commercial pilots', 'lunar logistics contract awards'],
+    threats:         'Kessler Syndrome risk from debris proliferation could trigger regulatory moratoria on launches. Geopolitical fragmentation of space access is creating parallel ecosystems that fragment addressable markets. Capital intensity is extreme with long payback periods.',
+    timeHorizon:     { label: 'Long-Term Secular', type: 'secular', note: '7–15 year infrastructure buildout' },
+    narrative:       'Commercial Space Infrastructure',
+    narrativeCluster: 'Strategic & Security Autonomy'
   },
-  Consumer:     {
-    structural: { title: 'Consumer: Home Robots Crossing Mass-Market Threshold',  why: 'Price-performance of home robots has hit the consumer adoption curve tipping point.', action: 'Target consumer robotics platforms with app ecosystems and subscription revenue models.' },
-    trend:      { title: 'Consumer: AI Agents Entering Daily Workflows',          why: 'AI assistants are moving from chat to task execution — sticky engagement and high LTV.', action: 'Back AI agent platforms with workflow integrations and demonstrated retention metrics.' }
+  Consumer: {
+    structural:      { title: 'Consumer: Home Robots Crossing Mass-Market Threshold',  why: 'Price-performance of home robots has hit the consumer adoption curve tipping point.', action: 'Target consumer robotics platforms with app ecosystems and subscription revenue models.' },
+    trend:           { title: 'Consumer: AI Agents Entering Daily Workflows',          why: 'AI assistants are moving from chat to task execution — sticky engagement and high LTV.', action: 'Back AI agent platforms with workflow integrations and demonstrated retention metrics.' },
+    whyThisMatters:  'Consumer robotics is approaching the smartphone moment — where hardware becomes the access device for a recurring software and services revenue stream. The platform that wins home robot adoption controls ambient data, AI personalisation, and a defensible subscription moat.',
+    watchNext:       ['humanoid robot commercial pricing benchmarks', 'home robot insurance product launches', 'AI agent enterprise vs consumer revenue split', 'ambient computing regulatory frameworks'],
+    threats:         'Consumer privacy regulation could restrict the data collection models that make home robots economically viable. Hype cycles in humanoid robotics are attracting speculative capital without near-term revenue visibility. Distribution and after-sales service remain unsolved at scale.',
+    timeHorizon:     { label: 'Short-Term', type: 'short', note: '1–3 year early adoption curve' },
+    narrative:       'Consumer Robotics Platform Race',
+    narrativeCluster: 'Human-Augmentation Systems'
   },
-  Semiconductor:{
-    structural: { title: 'Semiconductor: AI Chip Demand Structurally Undersupplied', why: 'AI inference demand is growing 10× faster than fab capacity additions.', action: 'Invest in AI chip designers and advanced packaging companies with hyperscaler supply agreements.' },
-    trend:      { title: 'Semiconductor: Edge AI Chips Opening New Markets',      why: 'On-device AI processing removes cloud dependency — enabling robotics in connectivity-poor environments.', action: 'Back edge AI semiconductor companies targeting robotics, automotive and industrial IoT.' }
+  Semiconductor: {
+    structural:      { title: 'Semiconductor: AI Chip Demand Structurally Undersupplied', why: 'AI inference demand is growing 10× faster than fab capacity additions.', action: 'Invest in AI chip designers and advanced packaging companies with hyperscaler supply agreements.' },
+    trend:           { title: 'Semiconductor: Edge AI Chips Opening New Markets',      why: 'On-device AI processing removes cloud dependency — enabling robotics in connectivity-poor environments.', action: 'Back edge AI semiconductor companies targeting robotics, automotive and industrial IoT.' },
+    whyThisMatters:  'AI chip undersupply is not a 2-year problem — it is structural. Advanced packaging and DRAM bandwidth have become the binding constraint for AI compute scaling. Companies that control advanced packaging capacity and HBM supply chains hold disproportionate pricing power for 12–18 months minimum.',
+    watchNext:       ['advanced packaging capacity additions at OSAT players', 'HBM supply contract announcements', 'CHIPS Act subsidy deployment timelines', 'AI chip export control expansion'],
+    threats:         'US-China tech decoupling is fragmenting the global semiconductor supply chain in ways that increase costs and reduce scale economies. NVIDIA\'s dominance in AI training creates a winner-take-most dynamic that limits TAM for challengers. Geopolitical risk around Taiwan fab concentration remains the single largest systemic risk.',
+    timeHorizon:     { label: 'Structural', type: 'structural', note: '3–7 year supply-demand rebalancing' },
+    narrative:       'AI Compute Infrastructure Bottleneck',
+    narrativeCluster: 'AI Compute Infrastructure'
   },
-  Manufacturing:{
-    structural: { title: 'Manufacturing: Cobot Penetration Still Under 5%',       why: 'Only 5% of global manufacturing tasks are automated — runway is enormous at current adoption rates.', action: 'Target cobot and flexible automation platform companies with SME-focused pricing models.' },
-    trend:      { title: 'Manufacturing: AI Quality Control Replacing Vision Systems', why: 'AI-powered defect detection outperforms traditional machine vision at a fraction of integration cost.', action: 'Back AI quality inspection platforms with proven production line deployments and quick payback.' }
+  Manufacturing: {
+    structural:      { title: 'Manufacturing: Cobot Penetration Still Under 5%',       why: 'Only 5% of global manufacturing tasks are automated — runway is enormous at current adoption rates.', action: 'Target cobot and flexible automation platform companies with SME-focused pricing models.' },
+    trend:           { title: 'Manufacturing: AI Quality Control Replacing Vision Systems', why: 'AI-powered defect detection outperforms traditional machine vision at a fraction of integration cost.', action: 'Back AI quality inspection platforms with proven production line deployments and quick payback.' },
+    whyThisMatters:  'Manufacturing automation is at an inflection point driven by converging forces: China+1 reshoring, labour cost inflation, and cobot price-performance breakthroughs. The companies that deploy automation infrastructure now will achieve 30–40% structural cost advantages that are nearly impossible to close post-deployment.',
+    watchNext:       ['China+1 supply chain relocation capex commitments', 'cobot leasing model adoption rates', 'industrial AI quality inspection contract pipeline', 'digital twin factory deployment timelines'],
+    threats:         'Reshoring narratives can reverse with commodity cycle turns. SME capex constraints limit adoption pace outside enterprise accounts. Integration complexity and skilled technician shortages create deployment bottlenecks that erode headline ROI claims.',
+    timeHorizon:     { label: 'Structural', type: 'structural', note: '3–7 year reshoring and automation cycle' },
+    narrative:       'Industrial Automation Wave',
+    narrativeCluster: 'Industrial Automation Wave'
   },
   'AI & Software': {
-    structural: { title: 'AI Platforms: Horizontal Automation Stack Emerging',    why: 'Foundation models are enabling cross-industry automation platforms with winner-take-most dynamics.', action: 'Back horizontal AI automation platforms with strong developer ecosystems and API revenue.' },
-    trend:      { title: 'AI Agents: Autonomous Task Execution Going Mainstream', why: 'AI agents are moving from demos to production — enterprise spend on agentic workflows is accelerating.', action: 'Invest in enterprise AI agent platforms with measurable productivity gains and Fortune 500 pilots.' }
+    structural:      { title: 'AI Platforms: Horizontal Automation Stack Emerging',    why: 'Foundation models are enabling cross-industry automation platforms with winner-take-most dynamics.', action: 'Back horizontal AI automation platforms with strong developer ecosystems and API revenue.' },
+    trend:           { title: 'AI Agents: Autonomous Task Execution Going Mainstream', why: 'AI agents are moving from demos to production — enterprise spend on agentic workflows is accelerating.', action: 'Invest in enterprise AI agent platforms with measurable productivity gains and Fortune 500 pilots.' },
+    whyThisMatters:  'Foundation models have compressed the cost of intelligence by orders of magnitude. This creates a platform opportunity analogous to cloud infrastructure — horizontal enabling layers that capture value across every vertical simultaneously. The winner in agentic workflow infrastructure will be the AWS of the intelligence economy.',
+    watchNext:       ['enterprise AI agent contract TCV disclosure', 'foundation model inference cost curve', 'AI regulation in the EU and India', 'sovereign AI infrastructure procurement'],
+    threats:         'Rapid commoditisation of foundation model capabilities is eroding moats for pure-play LLM companies. Open-source models are compressing the willingness-to-pay for proprietary AI. Regulatory uncertainty around AI liability and data provenance is creating enterprise adoption hesitancy.',
+    timeHorizon:     { label: 'Immediate', type: 'immediate', note: 'Active enterprise deployment now' },
+    narrative:       'Agentic AI Infrastructure Race',
+    narrativeCluster: 'AI Compute Infrastructure'
   },
-  General:      {
-    structural: { title: 'Cross-Sector: AI Automation Convergence Signal',        why: 'Multiple industries simultaneously adopting AI automation signals a platform-level shift in progress.', action: 'Identify cross-sector AI automation infrastructure plays with horizontal applicability.' },
-    trend:      { title: 'General: Automation Adoption Accelerating This Cycle',  why: 'Volume of automation news signals market is past early adopter phase and entering mainstream deployment.', action: 'Look for automation enablement platforms — integration tools, training data and workflow APIs.' }
+  General: {
+    structural:      { title: 'Cross-Sector: AI Automation Convergence Signal',        why: 'Multiple industries simultaneously adopting AI automation signals a platform-level shift in progress.', action: 'Identify cross-sector AI automation infrastructure plays with horizontal applicability.' },
+    trend:           { title: 'General: Automation Adoption Accelerating This Cycle',  why: 'Volume of automation news signals market is past early adopter phase and entering mainstream deployment.', action: 'Look for automation enablement platforms — integration tools, training data and workflow APIs.' },
+    whyThisMatters:  'Simultaneous acceleration across multiple sectors is not coincidence — it signals platform-level infrastructure maturity. When agriculture, defence, logistics and healthcare all move at once, the enabling layers (compute, sensors, connectivity, software) become the real opportunity.',
+    watchNext:       ['cross-sector AI infrastructure procurement', 'edge computing deployment timelines', 'automation skills gap training market', 'regulation convergence across sectors'],
+    threats:         'Broad market narratives can mask individual sector divergence. Cross-sector generalisation dilutes capital allocation precision. Macro rate environment continues to compress multiples for long-duration automation bets.',
+    timeHorizon:     { label: 'Structural', type: 'structural', note: 'Multi-year platform adoption cycle' },
+    narrative:       'Cross-Sector Automation Convergence',
+    narrativeCluster: 'Industrial Automation Wave'
   }
 };
 
-function deriveTag(text, count) {
-  if (/\bfund|\binvest|deal signed|contract award|billion|\bmillion|raise|ipo|acqui|partner/.test(text)) return 'invest';
-  if (/saturated|too many|margin pressure|commodit|legacy player|decline/.test(text))                  return 'saturated';
-  return count >= 3 ? 'invest' : 'watch';
+// ─────────────────────────────────────────────────────────────────────────────
+// NARRATIVE CLUSTERS — thematic groupings of sectors
+// ─────────────────────────────────────────────────────────────────────────────
+const NARRATIVE_CLUSTERS = {
+  'AI Compute Infrastructure': {
+    sectors:     ['Semiconductor', 'AI & Software'],
+    description: 'AI inference demand is structurally outpacing compute supply. Advanced packaging, memory bandwidth, and edge silicon are becoming the binding constraints of the intelligence economy.',
+    signal:      'invest',
+    momentum:    'high'
+  },
+  'Industrial Automation Wave': {
+    sectors:     ['Manufacturing', 'Logistics', 'Automotive', 'General'],
+    description: 'Converging labour economics, reshoring policy and robotics price-performance are driving the broadest industrial automation cycle in history. China+1, PLI schemes and e-commerce density are simultaneous accelerants.',
+    signal:      'invest',
+    momentum:    'high'
+  },
+  'Strategic & Security Autonomy': {
+    sectors:     ['Defence', 'Space'],
+    description: 'Geopolitical fragmentation is permanently structuring autonomous defence and space infrastructure into national security budgets. Procurement cycles are accelerating and are largely insensitive to macro conditions.',
+    signal:      'invest',
+    momentum:    'high'
+  },
+  'Human-Augmentation Systems': {
+    sectors:     ['Healthcare', 'Consumer', 'Agriculture'],
+    description: 'Robotics and AI are entering intimate human domains — caregiving, food production and the home. Adoption is slower but lock-in is deep. The platform opportunity emerges once data flywheels activate.',
+    signal:      'watch',
+    momentum:    'medium'
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WEAK SIGNAL DETECTION KEYWORDS
+// ─────────────────────────────────────────────────────────────────────────────
+const WEAK_SIGNAL_PATTERNS = [
+  { pattern: /patent|filing|ip.portfolio|granted.patent/,               label: 'Patent Activity',        type: 'ip' },
+  { pattern: /seed.fund|pre.series|angel.invest|stealth|incubat/,       label: 'Early-Stage Funding',    type: 'funding' },
+  { pattern: /shortage|bottleneck|supply.crunch|component.scarc/,       label: 'Supply Constraint',      type: 'supply' },
+  { pattern: /academic|university|research.grant|phd|lab.develop/,      label: 'Research Signal',        type: 'research' },
+  { pattern: /hiring|talent.shortage|engineer.demand|recruit/,          label: 'Talent Signal',          type: 'talent' },
+  { pattern: /regulatory.draft|policy.consult|legislation.propos/,      label: 'Regulatory Pre-Signal',  type: 'regulatory' },
+  { pattern: /pilot.program|prototype|proof.of.concept|early.trial/,    label: 'Prototype Stage',        type: 'prototype' },
+  { pattern: /executive.*appoint|cto.*join|vp.*robotics|chief.*robot/,  label: 'Leadership Signal',      type: 'leadership' },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONFIDENCE SCORING — 0–100 evidence-weighted
+// ─────────────────────────────────────────────────────────────────────────────
+function calcConfidenceScore(count, sourceCount, momentum, tag) {
+  let score = 0;
+  score += Math.min(count * 7, 35);          // article count: up to 35
+  score += Math.min(sourceCount * 12, 36);   // source diversity: up to 36 (3 diverse sources = 36)
+  score += momentum === 'high' ? 20 : momentum === 'medium' ? 12 : 5;  // momentum
+  score += tag === 'invest' ? 9 : tag === 'watch' ? 5 : 3;             // signal strength
+  return Math.min(Math.max(Math.round(score), 8), 97);
 }
 
-function deriveTimeSensitivity(text) {
-  if (/launch|deploy|announc|signed|awarded|today|this week|just released|unveiled/.test(text)) return 'Immediate';
-  if (/plan|roadmap|develop|next year|2027|2028|2029|future|long.term/.test(text))             return 'Long-term';
-  return 'Emerging';
+function confidenceLabel(score) {
+  if (score >= 75) return 'Very High';
+  if (score >= 55) return 'High';
+  if (score >= 35) return 'Medium';
+  return 'Low';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INTELLIGENCE PRIORITY SCORES — 0–100 per dimension
+// ─────────────────────────────────────────────────────────────────────────────
+const SECTOR_STRATEGIC_BASE = {
+  Semiconductor: 95, 'AI & Software': 92, Defence: 90, Manufacturing: 82,
+  Logistics: 78, Automotive: 75, Healthcare: 72, Space: 70,
+  Agriculture: 65, Consumer: 60, General: 50
+};
+const INDIA_RELEVANCE_BASE = {
+  Defence: 95, Semiconductor: 92, Manufacturing: 90, Logistics: 88, 'AI & Software': 85,
+  Space: 82, Automotive: 78, Agriculture: 75, Healthcare: 70, Consumer: 58, General: 55
+};
+
+function calcPriorityScores(sector, count, momentum, tag, text) {
+  const base     = SECTOR_STRATEGIC_BASE[sector]  || 50;
+  const indBase  = INDIA_RELEVANCE_BASE[sector]   || 50;
+  const momBoost = momentum === 'high' ? 8 : momentum === 'medium' ? 4 : 0;
+  const tagBoost = tag === 'invest' ? 6 : tag === 'watch' ? 3 : 0;
+  const countAdj = Math.min(count * 2, 10);
+
+  const saturationKeywords = /commodit|too many|margin pressure|legacy|decline|overinvest|crowded|bubble/;
+  const saturationRisk = saturationKeywords.test(text)
+    ? Math.min(80, 30 + count * 8)
+    : tag === 'saturated' ? 70
+    : tag === 'invest' && count >= 8 ? 40
+    : Math.max(10, 30 - count * 3);
+
+  return {
+    strategicScore:   Math.min(Math.round(base + momBoost + countAdj), 99),
+    indiaScore:       Math.min(Math.round(indBase + tagBoost + countAdj), 99),
+    investmentScore:  Math.min(Math.round(calcConfidenceScore(count, 3, momentum, tag) * 0.9 + tagBoost * 2), 99),
+    saturationRisk:   Math.round(saturationRisk)
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TIME HORIZON — 5-level system
+// ─────────────────────────────────────────────────────────────────────────────
+function deriveTimeHorizon(text, sector) {
+  const ctx = SECTOR_CTX[sector] || SECTOR_CTX.General;
+  // Article text can override sector default for current cycle
+  if (/launch|deploy|announc|signed|awarded|today|this week|just released|unveiled|now/.test(text))
+    return { label: 'Immediate', type: 'immediate', note: '0–3 months' };
+  if (/next.quarter|q[1-4]|within.months|this.year|6.month|12.month|near.term/.test(text))
+    return { label: 'Short-Term', type: 'short', note: '3–12 months' };
+  if (/next.year|2026|2027|medium.term|3.year|roadmap/.test(text))
+    return { label: 'Medium-Term', type: 'medium', note: '1–3 years' };
+  if (/2028|2029|2030|structural|fundamental|decade/.test(text))
+    return { label: 'Structural', type: 'structural', note: '3–7 years' };
+  // Fall back to sector default
+  return ctx.timeHorizon || { label: 'Structural', type: 'structural', note: '3–7 years' };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SIGNAL EVOLUTION MEMORY — track changes across refresh cycles
+// ─────────────────────────────────────────────────────────────────────────────
+function updateSignalMemory(sector, signalType, tag, confidenceScore, momentum, articleCount) {
+  const key = `${sector}-${signalType}`;
+  const now = Date.now();
+  const snap = { ts: now, tag, confidenceScore, momentum, articleCount };
+
+  if (!signalMemory[key]) {
+    signalMemory[key] = { firstSeen: now, history: [snap] };
+  } else {
+    signalMemory[key].history.push(snap);
+    // Keep last 20 snapshots
+    if (signalMemory[key].history.length > 20) {
+      signalMemory[key].history = signalMemory[key].history.slice(-20);
+    }
+  }
+  return signalMemory[key];
+}
+
+function getEvolution(sector, signalType, currentTag, currentScore) {
+  const key     = `${sector}-${signalType}`;
+  const mem     = signalMemory[key];
+  if (!mem || mem.history.length < 2) return null;
+
+  const history    = mem.history;
+  const prev       = history[history.length - 2];
+  const first      = history[0];
+  const ageHours   = Math.round((Date.now() - mem.firstSeen) / 3600000);
+  const ageDays    = Math.round(ageHours / 24);
+  const tagChanged = prev.tag !== currentTag;
+  const scoreDelta = currentScore - prev.confidenceScore;
+  const countDelta = history[history.length - 1].articleCount - prev.articleCount;
+
+  return {
+    firstSeen:   mem.firstSeen,
+    ageHours,
+    ageDays:     ageDays || 0,
+    prevTag:     prev.tag,
+    currentTag,
+    tagChanged,
+    scoreDelta:  Math.round(scoreDelta),
+    countDelta,
+    trend:       scoreDelta >= 5 ? 'accelerating' : scoreDelta <= -5 ? 'weakening' : 'stable',
+    cycles:      history.length
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WEAK SIGNAL DETECTOR
+// ─────────────────────────────────────────────────────────────────────────────
+function detectWeakSignals(articles) {
+  const weakArticles = [];
+  articles.forEach(a => {
+    const text = (a.title + ' ' + (a.summary || '')).toLowerCase();
+    for (const wp of WEAK_SIGNAL_PATTERNS) {
+      if (wp.pattern.test(text)) {
+        weakArticles.push({ ...a, weakType: wp.type, weakLabel: wp.label });
+        break;
+      }
+    }
+  });
+
+  // Group by sector
+  const byIndustry = {};
+  weakArticles.forEach(a => {
+    if (!byIndustry[a.industry]) byIndustry[a.industry] = [];
+    byIndustry[a.industry].push(a);
+  });
+
+  const signals = [];
+  for (const [sector, arts] of Object.entries(byIndustry)) {
+    const types   = [...new Set(arts.map(a => a.weakLabel))];
+    const topArt  = arts[0];
+    const ctx     = SECTOR_CTX[sector] || SECTOR_CTX.General;
+    const india   = INDIA_CTX[sector]  || INDIA_CTX.General;
+    signals.push({
+      type:        'weak',
+      sector,
+      signalTypes: types,
+      title:       `${sector}: Early Reconnaissance Signal`,
+      description: `${types.join(', ')} detected across ${arts.length} source${arts.length > 1 ? 's' : ''} — below mainstream momentum threshold.`,
+      headline:    topArt.title.slice(0, 100),
+      source:      topArt.source,
+      confidence:  'Low',
+      confidenceScore: Math.min(15 + arts.length * 5, 35),
+      narrative:   ctx.narrative || sector,
+      indiaImpact: india.indiaImpact,
+      watchNext:   (ctx.watchNext || []).slice(0, 2)
+    });
+  }
+  return signals;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NARRATIVE CLUSTER BUILDER
+// ─────────────────────────────────────────────────────────────────────────────
+function buildNarrativeClusters(insights) {
+  const activeSectors = new Set(insights.map(i => i.sector));
+  const result = [];
+
+  for (const [clusterName, cluster] of Object.entries(NARRATIVE_CLUSTERS)) {
+    const activeClusSectors = cluster.sectors.filter(s => activeSectors.has(s));
+    if (activeClusSectors.length === 0) continue;
+
+    const clusterInsights = insights.filter(i => activeClusSectors.includes(i.sector));
+    const avgConf = clusterInsights.length
+      ? Math.round(clusterInsights.reduce((s, i) => s + (i.confidenceScore || 50), 0) / clusterInsights.length)
+      : 50;
+    const investCount = clusterInsights.filter(i => i.tag === 'invest').length;
+    const totalCount  = clusterInsights.reduce((s, i) => s + (i.articleCount || 1), 0);
+    const narrativeStrength = investCount >= activeClusSectors.length ? 'Strong'
+      : investCount > 0 ? 'Building'
+      : 'Emerging';
+
+    result.push({
+      name:             clusterName,
+      description:      cluster.description,
+      activeSectors:    activeClusSectors,
+      totalSectors:     cluster.sectors.length,
+      signal:           cluster.signal,
+      momentum:         totalCount >= 10 ? 'high' : totalCount >= 4 ? 'medium' : 'low',
+      confidenceScore:  avgConf,
+      narrativeStrength,
+      investSignals:    investCount,
+      totalSignals:     clusterInsights.length
+    });
+  }
+
+  return result.sort((a, b) => b.confidenceScore - a.confidenceScore);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CORE INSIGHT BUILDER — 2 per sector + full strategic intelligence fields
+// ─────────────────────────────────────────────────────────────────────────────
+function deriveTag(text, count) {
+  if (/\bfund|\binvest|deal signed|contract award|billion|\bmillion|raise|ipo|acqui|partner/.test(text)) return 'invest';
+  if (/saturated|too many|margin pressure|commodit|legacy player|decline/.test(text))                    return 'saturated';
+  return count >= 3 ? 'invest' : 'watch';
 }
 
 function buildInsightsLocally(articles) {
@@ -281,56 +546,102 @@ function buildInsightsLocally(articles) {
   const insights = [];
 
   for (const [sector, arts] of Object.entries(sectors)) {
-    const count   = arts.length;
-    const text    = arts.map(a => (a.title + ' ' + (a.summary || ''))).join(' ').toLowerCase();
-    const sources = [...new Set(arts.map(a => a.source))].slice(0, 3);
-    const topArt  = arts[0];
-    const secArt  = arts[1] || arts[0];
-    const ctx     = SECTOR_CTX[sector] || SECTOR_CTX.General;
+    const count       = arts.length;
+    const text        = arts.map(a => (a.title + ' ' + (a.summary || ''))).join(' ').toLowerCase();
+    const sources     = [...new Set(arts.map(a => a.source))];
+    const sourceCount = sources.length;
+    const topArt      = arts[0];
+    const secArt      = arts[1] || arts[0];
+    const ctx         = SECTOR_CTX[sector] || SECTOR_CTX.General;
+    const india       = INDIA_CTX[sector]  || INDIA_CTX.General;
 
-    const tag             = deriveTag(text, count);
-    const momentum        = count >= 5 ? 'high' : count >= 2 ? 'medium' : 'low';
-    const confidence      = count >= 5 ? 'High' : count >= 2 ? 'Medium' : 'Low';
-    const timeSensitivity = deriveTimeSensitivity(text);
-    const vcl             = VCL_MAP[sector] || 'Software & AI';
-    const india           = INDIA_CTX[sector] || INDIA_CTX.General;
+    const tag            = deriveTag(text, count);
+    const momentum       = count >= 5 ? 'high' : count >= 2 ? 'medium' : 'low';
+    const timeHorizon    = deriveTimeHorizon(text, sector);
+    const confScore      = calcConfidenceScore(count, sourceCount, momentum, tag);
+    const confLabel      = confidenceLabel(confScore);
+    const priority       = calcPriorityScores(sector, count, momentum, tag, text);
+    const vcl            = VCL_MAP[sector] || 'Software & AI';
 
-    // Insight 1 — Structural gap / opportunity
+    // ── Insight 1 — Structural gap / opportunity ───────────────────────────
+    const mem1 = updateSignalMemory(sector, 'structural', tag, confScore, momentum, count);
+    const evo1 = getEvolution(sector, 'structural', tag, confScore);
+
     insights.push({
       tag,
       title:           ctx.structural.title,
       sector,
       vcl,
+      narrativeCluster: ctx.narrativeCluster,
+      narrative:       ctx.narrative,
       what:            `${count} signal${count > 1 ? 's' : ''} this cycle — top story: "${topArt.title.slice(0, 85)}"`,
       why:             ctx.structural.why,
       whyMatters:      `${count} corroborating source${count > 1 ? 's' : ''} confirm ${momentum} momentum in ${sector} — structural gap remains open.`,
+      whyThisMatters:  ctx.whyThisMatters,
       action:          ctx.structural.action,
-      confidence,
-      timeSensitivity,
+      watchNext:       ctx.watchNext || [],
+      threats:         ctx.threats,
+      // Confidence
+      confidence:      confLabel,
+      confidenceScore: confScore,
+      // Time horizon
+      timeSensitivity: timeHorizon.label,
+      timeHorizon,
+      // Momentum
       momentum,
-      dataBasis:       `${count} article${count > 1 ? 's' : ''} from ${sources.join(', ')}.`,
+      articleCount:    count,
+      // Data
+      dataBasis:       `${count} article${count > 1 ? 's' : ''} from ${sources.slice(0, 3).join(', ')}.`,
+      // Priority scores
+      ...priority,
+      // India
       indiaImpact:     india.indiaImpact,
       indiaWhy:        india.indiaWhy,
-      indianCompanies: india.indianCompanies
+      indianCompanies: india.indianCompanies,
+      // Evolution
+      evolution:       evo1,
+      firstSeen:       mem1.firstSeen
     });
 
-    // Insight 2 — Trend / current cycle signal
+    // ── Insight 2 — Trend / current cycle signal ───────────────────────────
+    const confScore2 = calcConfidenceScore(count, sourceCount, momentum, tag === 'invest' ? 'watch' : tag);
+    const mem2 = updateSignalMemory(sector, 'trend', tag === 'invest' ? 'watch' : tag, confScore2, momentum, count);
+    const evo2 = getEvolution(sector, 'trend', tag === 'invest' ? 'watch' : tag, confScore2);
+
     insights.push({
       tag:             tag === 'invest' ? 'watch' : tag,
       title:           ctx.trend.title,
       sector,
       vcl,
+      narrativeCluster: ctx.narrativeCluster,
+      narrative:       ctx.narrative,
       what:            `Trend signal: "${secArt.title.slice(0, 85)}"`,
       why:             ctx.trend.why,
-      whyMatters:      `Current news cycle reinforces ${sector} as an active investment theme — timing window is ${timeSensitivity.toLowerCase()}.`,
+      whyMatters:      `Current news cycle reinforces ${sector} as an active investment theme — timing window is ${timeHorizon.label.toLowerCase()}.`,
+      whyThisMatters:  ctx.whyThisMatters,
       action:          ctx.trend.action,
-      confidence:      count >= 3 ? 'Medium' : 'Low',
-      timeSensitivity,
+      watchNext:       ctx.watchNext || [],
+      threats:         ctx.threats,
+      // Confidence
+      confidence:      confidenceLabel(confScore2),
+      confidenceScore: confScore2,
+      // Time horizon
+      timeSensitivity: timeHorizon.label,
+      timeHorizon,
+      // Momentum
       momentum,
-      dataBasis:       `Trend derived from ${count} article${count > 1 ? 's' : ''} across ${sources.join(', ')}.`,
+      articleCount:    count,
+      // Data
+      dataBasis:       `Trend derived from ${count} article${count > 1 ? 's' : ''} across ${sources.slice(0, 3).join(', ')}.`,
+      // Priority scores
+      ...priority,
+      // India
       indiaImpact:     india.indiaImpact,
       indiaWhy:        india.indiaWhy,
-      indianCompanies: india.indianCompanies
+      indianCompanies: india.indianCompanies,
+      // Evolution
+      evolution:       evo2,
+      firstSeen:       mem2.firstSeen
     });
   }
 
@@ -339,7 +650,7 @@ function buildInsightsLocally(articles) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GEMINI — India context only (~80 tokens input, 1M tokens/day free)
+// GEMINI — India context enrichment (rule-based already populated as fallback)
 // ─────────────────────────────────────────────────────────────────────────────
 async function callGemini(prompt) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`;
@@ -359,17 +670,14 @@ async function callGemini(prompt) {
   return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 }
 
-// enrichIndiaContext — rule-based India context is already set; Gemini ENHANCES it
-// with news-specific analysis. If Gemini is unavailable, rule-based data stands.
 async function enrichIndiaContext(insights) {
   if (!GEMINI_KEY && !GROQ_KEY) {
-    console.log('  → India context: rule-based (no AI key available)');
-    return insights;  // already populated from INDIA_CTX
+    console.log('  → India context: rule-based only (no AI key)');
+    return insights;
   }
   if (insights.length === 0) return insights;
 
   const sectors = [...new Set(insights.map(i => i.sector))];
-  // Build sector+headline summary so Gemini can give news-specific India context
   const sectorHeadlines = sectors.map(s => {
     const arts = insights.filter(i => i.sector === s);
     const headline = arts[0]?.what?.replace(/^.*?top story: "/, '').replace(/"$/, '') || s;
@@ -392,7 +700,7 @@ JSON array only. No markdown. No explanation.`;
   try {
     let text = '';
     if (GEMINI_KEY) {
-      console.log('  → India context via Gemini (news-specific enhancement)…');
+      console.log('  → India context via Gemini…');
       text = await callGemini(prompt);
     } else {
       console.log('  → India context via Groq fallback…');
@@ -413,34 +721,33 @@ JSON array only. No markdown. No explanation.`;
     if (start === -1 || end === -1) throw new Error('No JSON array in AI response');
     const aiData = JSON.parse(text.slice(start, end + 1));
 
-    // Merge AI data onto insights; fall back to existing rule-based value if field missing
     return insights.map(ins => {
       const match = aiData.find(d => d.sector === ins.sector);
-      if (!match) return ins;   // keep rule-based India data untouched
+      if (!match) return ins;
       return {
         ...ins,
         indiaImpact:     match.indiaImpact     || ins.indiaImpact,
         indiaWhy:        match.indiaWhy        || ins.indiaWhy,
         indianCompanies: (match.indianCompanies && match.indianCompanies.length)
-                           ? match.indianCompanies
-                           : ins.indianCompanies
+                           ? match.indianCompanies : ins.indianCompanies
       };
     });
-
   } catch (e) {
-    console.error('  ✗ India AI enrichment failed — keeping rule-based data:', e.message);
-    return insights;  // rule-based data already in place, no "Analysing..." ever
+    console.error('  ✗ India enrichment failed — keeping rule-based data:', e.message);
+    return insights;
   }
 }
 
 async function generateInsights(articles) {
-  if (articles.length === 0) return [];
-  console.log('  → Building rule-based insights (2 per sector)…');
-  const base     = buildInsightsLocally(articles);
-  console.log(`  ✓ ${base.length} base insights built across ${Math.round(base.length / 2)} sectors`);
-  const enriched = await enrichIndiaContext(base);
-  console.log(`  ✓ India context enriched — ${enriched.length} total insights`);
-  return enriched;
+  if (articles.length === 0) return { insights: [], weakSignals: [], narratives: [] };
+  console.log('  → Building strategic intelligence (2 insights/sector + weak signals + narratives)…');
+  const base       = buildInsightsLocally(articles);
+  console.log(`  ✓ ${base.length} base insights across ${Math.round(base.length / 2)} sectors`);
+  const enriched   = await enrichIndiaContext(base);
+  const weakSigs   = detectWeakSignals(articles);
+  const narratives = buildNarrativeClusters(enriched);
+  console.log(`  ✓ ${weakSigs.length} weak signals detected | ${narratives.length} narrative clusters`);
+  return { insights: enriched, weakSignals: weakSigs, narratives };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -476,9 +783,9 @@ async function refresh() {
   const articles = deduplicate([...gnews, ...newsdata, ...currents, ...guardian]);
   console.log(`  ✓ ${articles.length} unique articles`);
 
-  const insights = await generateInsights(articles);
+  const { insights, weakSignals, narratives } = await generateInsights(articles);
 
-  cache = { articles, insights, momentum: buildMomentum(articles), generatedAt: Date.now() };
+  cache = { articles, insights, weakSignals, narratives, momentum: buildMomentum(articles), generatedAt: Date.now() };
   return cache;
 }
 
@@ -490,8 +797,9 @@ app.post('/api/refresh', async (req, res) => {
   catch (e) { console.error('Refresh error:', e.message); res.status(500).json({ error: e.message }); }
 });
 
-app.get('/api/cache',        (req, res) => res.json(cache));
-app.post('/api/auto-refresh',(req, res) => res.json({ ok: true }));
+app.get('/api/cache',         (req, res) => res.json(cache));
+app.get('/api/narratives',    (req, res) => res.json({ narratives: cache.narratives || [], weakSignals: cache.weakSignals || [] }));
+app.post('/api/auto-refresh', (req, res) => res.json({ ok: true }));
 
 app.get('/api/test-gemini', async (req, res) => {
   if (!GEMINI_KEY) return res.json({ ok: false, error: 'GEMINI_API_KEY not set' });
@@ -508,11 +816,13 @@ cron.schedule('0 */2 * * *', () => {
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
-  console.log(`\n🚀 Robotics Intelligence Engine on port ${PORT}`);
+  console.log(`\n🚀 Robotics Intelligence Engine v3.0 — Strategic Intelligence Edition`);
+  console.log(`   Port       : ${PORT}`);
   console.log(`   GNews      : ${GNEWS_KEY    ? '✓' : '✗'}`);
   console.log(`   NewsData   : ${NEWSDATA_KEY ? '✓' : '✗'}`);
   console.log(`   Currents   : ${CURRENTS_KEY ? '✓' : '✗'}`);
   console.log(`   Guardian   : ✓ (no key needed)`);
   console.log(`   Gemini     : ${GEMINI_KEY   ? '✓' : '✗'}`);
   console.log(`   Groq backup: ${GROQ_KEY     ? '✓' : '✗'}`);
+  console.log(`   Upgrades   : Confidence Engine | Signal Memory | Weak Signals | Narratives | Why This Matters | Next To Watch | Threat Intel | Priority Scores | Time Horizon`);
 });
