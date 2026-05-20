@@ -1,10 +1,11 @@
 'use strict';
 
 require('dotenv').config();
-const express  = require('express');
-const cors     = require('cors');
-const cron     = require('node-cron');
-const path     = require('path');
+const express     = require('express');
+const cors        = require('cors');
+const cron        = require('node-cron');
+const path        = require('path');
+const { MongoClient } = require('mongodb');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -14,6 +15,45 @@ const NEWSDATA_KEY = process.env.NEWSDATA_KEY     || '';
 const CURRENTS_KEY = process.env.CURRENTS_API_KEY || '';
 const GEMINI_KEY   = process.env.GEMINI_API_KEY   || '';
 const GROQ_KEY     = process.env.GROQ_API_KEY     || '';
+const MONGODB_URI  = process.env.MONGODB_URI      || '';
+
+// ── MongoDB Atlas connection ───────────────────────────────────────────────────
+let mongoDb     = null;   // set once connected
+let mongoClient = null;
+
+async function connectMongo() {
+  if (!MONGODB_URI) {
+    console.log('   MongoDB   : not configured — signal history is in-memory only');
+    return;
+  }
+  try {
+    mongoClient = new MongoClient(MONGODB_URI, {
+      serverSelectionTimeoutMS: 6000,
+      connectTimeoutMS:         6000
+    });
+    await mongoClient.connect();
+    mongoDb = mongoClient.db('robointel');
+    console.log('   MongoDB   : ✓ Connected to Atlas (robointel)');
+
+    // Create TTL index — auto-delete snapshots older than 90 days
+    await mongoDb.collection('signalHistory').createIndex(
+      { capturedAt: 1 },
+      { expireAfterSeconds: 90 * 24 * 3600, background: true }
+    );
+
+    // Load last 30 snapshots into memory on startup
+    const docs = await mongoDb.collection('signalHistory')
+      .find({})
+      .sort({ capturedAt: -1 })
+      .limit(30)
+      .toArray();
+    signalHistory = docs;
+    console.log(`   MongoDB   : ✓ Loaded ${signalHistory.length} snapshots from Atlas`);
+  } catch (e) {
+    console.error('   MongoDB   : ✗ Connection failed:', e.message, '— using in-memory fallback');
+    mongoDb = null;
+  }
+}
 
 // ── In-memory cache ───────────────────────────────────────────────────────────
 let cache = { articles: [], insights: [], weakSignals: [], narratives: [], momentum: {}, generatedAt: null };
@@ -531,6 +571,20 @@ async function captureSignalSnapshot(insights) {
     }))
   };
 
+  // ── Persist to MongoDB Atlas ──────────────────────────────────────────────
+  if (mongoDb) {
+    try {
+      await mongoDb.collection('signalHistory').insertOne({
+        ...snapshot,
+        capturedAt: new Date(snapshot.capturedAt)   // store as BSON Date for TTL index
+      });
+      console.log('  ✓ Snapshot saved to MongoDB Atlas');
+    } catch (e) {
+      console.error('  ✗ MongoDB save failed:', e.message, '— snapshot kept in memory');
+    }
+  }
+
+  // ── Keep in-memory list (newest first, max 30) ────────────────────────────
   signalHistory.unshift(snapshot);
   if (signalHistory.length > 30) signalHistory = signalHistory.slice(0, 30);
   console.log(`  ✓ Signal snapshot #${signalHistory.length} saved (${snapshot.signals.length} signals)`);
@@ -1050,8 +1104,21 @@ app.get('/api/stock-prices', async (req, res) => {
 });
 
 // ── Signal history ────────────────────────────────────────────────────────────
-app.get('/api/signal-history', (req, res) => {
-  res.json({ history: signalHistory, count: signalHistory.length });
+app.get('/api/signal-history', async (req, res) => {
+  // Serve from MongoDB for full history (survives restarts), fallback to in-memory
+  if (mongoDb) {
+    try {
+      const docs = await mongoDb.collection('signalHistory')
+        .find({})
+        .sort({ capturedAt: -1 })
+        .limit(50)
+        .toArray();
+      return res.json({ history: docs, count: docs.length, source: 'mongodb' });
+    } catch (e) {
+      console.error('  ✗ MongoDB history fetch failed:', e.message, '— falling back to memory');
+    }
+  }
+  res.json({ history: signalHistory, count: signalHistory.length, source: 'memory' });
 });
 
 app.get('/api/test-gemini', async (req, res) => {
@@ -1068,7 +1135,7 @@ cron.schedule('0 */2 * * *', () => {
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`\n🚀 Robotics Intelligence Engine v3.0 — Strategic Intelligence Edition`);
   console.log(`   Port       : ${PORT}`);
   console.log(`   GNews      : ${GNEWS_KEY    ? '✓' : '✗'}`);
@@ -1077,6 +1144,10 @@ app.listen(PORT, () => {
   console.log(`   Guardian   : ✓ (no key needed)`);
   console.log(`   Gemini     : ${GEMINI_KEY   ? '✓' : '✗'}`);
   console.log(`   Groq backup: ${GROQ_KEY     ? '✓' : '✗'}`);
+  console.log(`   MongoDB    : ${MONGODB_URI  ? '⏳ connecting…' : '✗ not set'}`);
   console.log(`   Upgrades   : Confidence Engine | Signal Memory | Weak Signals | Narratives | Why This Matters | Next To Watch | Threat Intel | Priority Scores | Time Horizon`);
   console.log(`   Stock Intel: Yahoo Finance API | ~70-company ticker map | Signal History snapshots`);
+
+  // Connect to MongoDB Atlas (non-blocking — server already accepting requests)
+  await connectMongo();
 });
