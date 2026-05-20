@@ -585,6 +585,45 @@ a{color:inherit;text-decoration:none}
   .land-nav{padding:0 24px}
   .land-bottom{padding:0 24px;flex-wrap:wrap;height:auto;padding:10px 24px;gap:10px}
 }
+
+/* ── SIGNAL HISTORY ──────────────────────────────────────────────────────────── */
+.hist-snapshot{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px}
+.hist-snapshot-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px}
+.hist-snapshot-time{font-size:12px;font-weight:600;color:var(--text)}
+.hist-snapshot-sub{font-size:10px;color:var(--muted);margin-top:2px}
+.hist-snap-badge{display:flex;align-items:center;gap:6px}
+.hist-stat-pill{padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:rgba(99,102,241,.1);color:#6366f1;border:1px solid rgba(99,102,241,.2)}
+.hist-signal-row{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.hist-signal-row:last-child{border-bottom:none;padding-bottom:0}
+.hist-tag{flex-shrink:0;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-top:1px}
+.hist-invest{background:rgba(5,150,105,.12);color:#065f46}
+.hist-watch{background:rgba(217,119,6,.12);color:#92400e}
+.hist-saturated{background:rgba(220,38,38,.12);color:#991b1b}
+body.dark .hist-invest{background:rgba(16,185,129,.15);color:#34d399}
+body.dark .hist-watch{background:rgba(245,158,11,.15);color:#fbbf24}
+body.dark .hist-saturated{background:rgba(239,68,68,.15);color:#f87171}
+.hist-signal-info{flex:1;min-width:0}
+.hist-signal-title{font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hist-signal-sector{font-size:10px;color:var(--muted);margin-bottom:6px}
+
+/* ── STOCK TICKER CHIPS ──────────────────────────────────────────────────────── */
+.stock-chips-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
+.stock-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-size:10px;font-weight:600;cursor:default;transition:border .15s;min-width:0}
+.stock-chip:hover{border-color:rgba(99,102,241,.4)}
+.stock-ticker-sym{color:var(--text);font-weight:800;font-size:10px}
+.stock-price-val{color:var(--muted);font-size:10px}
+.stock-chg{font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px}
+.stock-chg-up{background:rgba(16,185,129,.12);color:#059669}
+.stock-chg-dn{background:rgba(239,68,68,.1);color:#dc2626}
+.stock-chg-flat{color:var(--muted)}
+body.dark .stock-chg-up{color:#34d399}
+body.dark .stock-chg-dn{color:#f87171}
+.stock-loading{font-size:10px;color:var(--muted);padding:4px 8px;background:var(--surface2);border-radius:5px;border:1px solid var(--border)}
+.stock-error{font-size:10px;color:var(--red);opacity:.6}
+
+/* ── HISTORY PAGE EMPTY STATE ───────────────────────────────────────────────── */
+.hist-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:16px;text-align:center;color:var(--muted)}
+.hist-empty-icon{width:56px;height:56px;border-radius:50%;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);display:flex;align-items:center;justify-content:center}
 </style>
 </head>
 <body>
@@ -781,6 +820,14 @@ a{color:inherit;text-decoration:none}
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
       </div>
       Opportunity + Momentum
+    </div>
+    <div style="height:1px;background:var(--border);margin:10px 0"></div>
+    <div style="padding:6px 18px 4px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">Performance</div>
+    <div class="nav-item" onclick="navigate('history')">
+      <div class="nav-icon" style="color:#a78bfa">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>
+      Signal History
     </div>
   </nav>
   <div class="sidebar-footer">
@@ -1060,7 +1107,7 @@ const AUTO_REFRESH_INTERVAL_MS = 20 * 60 * 1000; // 20 minutes
 // ===================== NAVIGATE =====================
 function navigate(tab) {
   currentTab = tab;
-  const allTabs = ['opportunity','market','capital','heatmap','companies','query','live','momentum','fusion'];
+  const allTabs = ['opportunity','market','capital','heatmap','companies','query','live','momentum','fusion','history'];
   document.querySelectorAll('.nav-item').forEach((el,i) => {
     el.classList.toggle('active', allTabs[i] === tab);
   });
@@ -1073,7 +1120,8 @@ function navigate(tab) {
     query:       ['Query Intelligence','Ask natural language questions · Get direct answers + data'],
     live:        ['Live Signals','Real-time robotics news · AI-tagged by sector & value chain'],
     momentum:    ['Momentum Tracker','Which sectors are gaining signal volume right now'],
-    fusion:      ['Opportunity + Momentum','Structural gaps fused with live market signals']
+    fusion:      ['Opportunity + Momentum','Structural gaps fused with live market signals'],
+    history:     ['Signal History','Performance tracking · Global stock correlation · Signal outcomes']
   };
   document.getElementById('page-title').textContent = titles[tab][0];
   document.getElementById('page-sub').textContent = titles[tab][1];
@@ -1090,6 +1138,7 @@ function navigate(tab) {
   else if(tab==='live') renderLive();
   else if(tab==='momentum') renderMomentum();
   else if(tab==='fusion') renderFusion();
+  else if(tab==='history') renderHistory();
 }
 
 // ===================== AUTO-REFRESH ENGINE =====================
@@ -1450,6 +1499,238 @@ function renderFusion() {
   </div>`;
 }
 
+// ===================== SIGNAL HISTORY =====================
+// stockCache: ticker → { price, currency, name, change7d, change30d } fetched fresh
+const stockCache = {};
+
+async function fetchLiveStocks(tickers) {
+  const missing = tickers.filter(t => !stockCache[t] || (Date.now() - (stockCache[t]._ts||0)) > 5*60*1000);
+  if (missing.length === 0) return;
+  try {
+    const url = `${API_BASE}/api/stock-prices?tickers=${missing.join(',')}`;
+    const res  = await fetch(url);
+    if (!res.ok) return;
+    const data = await res.json();
+    for (const [ticker, info] of Object.entries(data.stocks || {})) {
+      stockCache[ticker] = { ...info, _ts: Date.now() };
+    }
+  } catch (e) { /* silently skip */ }
+}
+
+function renderStockChips(tickers, capturedPrices, container) {
+  if (!tickers || tickers.length === 0) return;
+
+  // Show loading placeholders first
+  container.innerHTML = tickers.map(t => `
+    <span class="stock-chip" id="chip-${t.replace(/\./g,'_')}">
+      <span class="stock-ticker-sym">${t}</span>
+      <span class="stock-loading">…</span>
+    </span>`).join('');
+
+  // Fetch live prices then update chips
+  fetchLiveStocks(tickers).then(() => {
+    tickers.forEach(t => {
+      const chipId = 'chip-' + t.replace(/\./g,'_');
+      const chip   = container.querySelector('#' + chipId);
+      if (!chip) return;
+
+      const live    = stockCache[t];
+      const base    = capturedPrices?.[t];
+      const price   = live?.price;
+      const chg7d   = live?.change7d;
+      const currency= live?.currency || '';
+      const name    = live?.name || t;
+
+      if (!price) {
+        chip.innerHTML = `<span class="stock-ticker-sym">${t}</span><span class="stock-error">n/a</span>`;
+        return;
+      }
+
+      // Price delta vs capture-time baseline
+      let deltaHtml = '';
+      if (base?.price && price) {
+        const pct = ((price - base.price) / base.price * 100).toFixed(1);
+        const cls  = pct > 0 ? 'stock-chg-up' : pct < 0 ? 'stock-chg-dn' : 'stock-chg-flat';
+        const sign = pct > 0 ? '+' : '';
+        deltaHtml  = `<span class="stock-chg ${cls}">${sign}${pct}%</span>`;
+      } else if (chg7d !== null && chg7d !== undefined) {
+        const cls  = chg7d > 0 ? 'stock-chg-up' : chg7d < 0 ? 'stock-chg-dn' : 'stock-chg-flat';
+        const sign = chg7d > 0 ? '+' : '';
+        deltaHtml  = `<span class="stock-chg ${cls}">${sign}${chg7d}% 7d</span>`;
+      }
+
+      const priceStr = price >= 100 ? price.toFixed(0) : price.toFixed(2);
+      chip.innerHTML = `
+        <span class="stock-ticker-sym" title="${name}">${t}</span>
+        <span class="stock-price-val">${currency} ${priceStr}</span>
+        ${deltaHtml}`;
+    });
+  });
+}
+
+async function renderHistory() {
+  const c = document.getElementById('content');
+  c.innerHTML = `
+  <div class="grid grid-4" style="margin-bottom:20px">
+    <div class="card card-sm">
+      <div class="card-title">Snapshots Stored</div>
+      <div class="card-value" id="hist-stat-snaps" style="color:#a78bfa">—</div>
+      <div class="card-delta">Signal cycles tracked</div>
+    </div>
+    <div class="card card-sm">
+      <div class="card-title">Tickers Tracked</div>
+      <div class="card-value" id="hist-stat-tickers" style="color:var(--teal)">—</div>
+      <div class="card-delta">Global exchanges covered</div>
+    </div>
+    <div class="card card-sm">
+      <div class="card-title">Invest Signals</div>
+      <div class="card-value" id="hist-stat-invest" style="color:#34d399">—</div>
+      <div class="card-delta">High-conviction recorded</div>
+    </div>
+    <div class="card card-sm">
+      <div class="card-title">Data Since</div>
+      <div class="card-value" id="hist-stat-since" style="font-size:15px;color:#818cf8">—</div>
+      <div class="card-delta">First snapshot recorded</div>
+    </div>
+  </div>
+
+  <div style="background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.2);border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:12px;color:#a78bfa;display:flex;align-items:flex-start;gap:10px">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <div>
+      <strong>How this works:</strong> Each time you click Refresh Intelligence, a snapshot is saved with signals and baseline stock prices. Stock chips below show the % change since the signal was captured — or live 7-day change if captured price is unavailable.
+      Stock prices are fetched live from Yahoo Finance (global exchanges — NYSE, NASDAQ, TSE, KRX, FSE, LSE).
+      <span style="color:var(--muted);margin-left:4px">Data is in-memory only until MongoDB Atlas is connected.</span>
+    </div>
+  </div>
+
+  <div id="hist-content">
+    <div style="display:flex;align-items:center;justify-content:center;min-height:40vh;color:var(--muted);font-size:13px">
+      <div style="text-align:center">
+        <div style="font-size:24px;margin-bottom:8px">⏳</div>
+        Loading signal history…
+      </div>
+    </div>
+  </div>`;
+
+  // Fetch history from server
+  let history = [];
+  try {
+    const res  = await fetch(`${API_BASE}/api/signal-history`);
+    if (res.ok) {
+      const data = await res.json();
+      history = data.history || [];
+    }
+  } catch (e) { /* offline */ }
+
+  const histContent = document.getElementById('hist-content');
+
+  if (history.length === 0) {
+    // Update stats
+    document.getElementById('hist-stat-snaps').textContent   = '0';
+    document.getElementById('hist-stat-tickers').textContent = '0';
+    document.getElementById('hist-stat-invest').textContent  = '0';
+    document.getElementById('hist-stat-since').textContent   = '—';
+
+    histContent.innerHTML = `
+    <div class="hist-empty">
+      <div class="hist-empty-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px">No Signal History Yet</div>
+        <div style="font-size:13px;color:var(--muted);max-width:380px;line-height:1.7">
+          Click <strong style="color:var(--teal)">Refresh Intelligence</strong> in the top bar to generate your first signal snapshot.
+          Each refresh captures signals + global stock prices as a baseline.
+        </div>
+      </div>
+    </div>`;
+    return;
+  }
+
+  // Compute stats
+  const allTickers  = [...new Set(history.flatMap(s => s.signals.flatMap(sig => sig.tickers || [])))];
+  const investCount = history.reduce((s, snap) => s + snap.signals.filter(sig => sig.tag === 'invest').length, 0);
+  const oldest      = history[history.length - 1]?.capturedAt;
+
+  document.getElementById('hist-stat-snaps').textContent   = history.length;
+  document.getElementById('hist-stat-tickers').textContent = allTickers.length;
+  document.getElementById('hist-stat-invest').textContent  = investCount;
+  document.getElementById('hist-stat-since').textContent   = oldest
+    ? new Date(oldest).toLocaleDateString([], { month: 'short', day: 'numeric' })
+    : '—';
+
+  // Pre-fetch live prices for all tracked tickers
+  await fetchLiveStocks(allTickers.slice(0, 20));
+
+  // Render snapshots
+  histContent.innerHTML = '';
+  history.forEach((snap, snapIdx) => {
+    const snapDate   = new Date(snap.capturedAt);
+    const dateStr    = snapDate.toLocaleDateString([], { month:'short', day:'numeric' });
+    const timeStr    = snapDate.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+    const investN    = snap.signals.filter(s => s.tag === 'invest').length;
+    const watchN     = snap.signals.filter(s => s.tag === 'watch').length;
+    const tickerSet  = [...new Set(snap.signals.flatMap(s => s.tickers || []))];
+
+    const snapEl = document.createElement('div');
+    snapEl.className = 'hist-snapshot';
+    snapEl.innerHTML = `
+      <div class="hist-snapshot-header">
+        <div>
+          <div class="hist-snapshot-time">${dateStr} · ${timeStr}
+            ${snapIdx === 0 ? '<span style="font-size:9px;font-weight:800;color:#10b981;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.25);padding:1px 6px;border-radius:4px;margin-left:6px;letter-spacing:.4px">LATEST</span>' : ''}
+          </div>
+          <div class="hist-snapshot-sub">${snap.articleCount || 0} articles · ${snap.signals.length} signals</div>
+        </div>
+        <div class="hist-snap-badge">
+          ${investN > 0 ? `<span class="hist-stat-pill" style="background:rgba(16,185,129,.1);color:#059669;border-color:rgba(16,185,129,.2)">${investN} INVEST</span>` : ''}
+          ${watchN  > 0 ? `<span class="hist-stat-pill" style="background:rgba(245,158,11,.1);color:#d97706;border-color:rgba(245,158,11,.2)">${watchN} WATCH</span>` : ''}
+          <span class="hist-stat-pill">${tickerSet.length} stocks</span>
+        </div>
+      </div>`;
+
+    // Show signals grouped — INVEST first then WATCH
+    const sorted = [...snap.signals].sort((a, b) => {
+      const o = { invest: 0, watch: 1, saturated: 2 };
+      return (o[a.tag] || 1) - (o[b.tag] || 1);
+    });
+
+    // De-dup by sector+tag (show unique sectors only)
+    const seen = new Set();
+    const unique = sorted.filter(s => {
+      const key = `${s.sector}-${s.tag}`;
+      if (seen.has(key)) return false;
+      seen.add(key); return true;
+    });
+
+    unique.forEach(sig => {
+      const rowEl = document.createElement('div');
+      rowEl.className = 'hist-signal-row';
+
+      const tagCls   = sig.tag === 'invest' ? 'hist-invest' : sig.tag === 'watch' ? 'hist-watch' : 'hist-saturated';
+      const tagLabel = sig.tag === 'invest' ? '● INVEST' : sig.tag === 'watch' ? '● WATCH' : '● SAT';
+
+      rowEl.innerHTML = `
+        <span class="hist-tag ${tagCls}">${tagLabel}</span>
+        <div class="hist-signal-info">
+          <div class="hist-signal-title" title="${sig.title}">${sig.title}</div>
+          <div class="hist-signal-sector">${sig.sector} · ${sig.confidence || '—'} confidence · ${sig.momentum || ''} momentum</div>
+          <div class="stock-chips-row" id="chips-${snapIdx}-${sig.sector.replace(/[^a-z]/gi,'')}-${sig.tag}"></div>
+        </div>`;
+
+      snapEl.appendChild(rowEl);
+
+      // Render stock chips with live prices + delta vs capture
+      const chipsContainer = rowEl.querySelector(`#chips-${snapIdx}-${sig.sector.replace(/[^a-z]/gi,'')}-${sig.tag}`);
+      if (chipsContainer && sig.tickers && sig.tickers.length > 0) {
+        renderStockChips(sig.tickers, sig.prices || {}, chipsContainer);
+      }
+    });
+
+    histContent.appendChild(snapEl);
+  });
+}
+
 // ===================== OFFLINE BANNER =====================
 function renderOfflineBanner(section) {
   return `
@@ -1763,8 +2044,24 @@ function renderOpportunity() {
           </div>
           <div class="threat-text">${ins.threats}</div>
         </div>` : ''}
+
+        <!-- GLOBAL STOCKS -->
+        ${ins.relevantTickers && ins.relevantTickers.length ? `
+        <div style="margin-top:10px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:7px">
+          <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;gap:5px">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+            Global Stocks in Focus
+          </div>
+          <div class="stock-chips-row" id="insstock-${ins.sector.replace(/[^a-z]/gi,'')}-${ins.tag}"></div>
+        </div>` : ''}
       `;
       grid.appendChild(el);
+
+      // Render stock chips for this insight card
+      if (ins.relevantTickers && ins.relevantTickers.length) {
+        const stockRow = grid.querySelector(`#insstock-${ins.sector.replace(/[^a-z]/gi,'')}-${ins.tag}`);
+        if (stockRow) renderStockChips(ins.relevantTickers, {}, stockRow);
+      }
     });
   }
 

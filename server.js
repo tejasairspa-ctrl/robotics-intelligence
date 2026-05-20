@@ -310,6 +310,233 @@ const NARRATIVE_CLUSTERS = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// COMPANY → TICKER MAP — global robotics / AI / semiconductor companies
+// ─────────────────────────────────────────────────────────────────────────────
+const COMPANY_TICKER_MAP = [
+  // Semiconductor
+  { aliases: ['nvidia'],                             ticker: 'NVDA',         name: 'NVIDIA'             },
+  { aliases: ['amd', 'advanced micro devices'],      ticker: 'AMD',          name: 'AMD'                },
+  { aliases: ['intel'],                              ticker: 'INTC',         name: 'Intel'              },
+  { aliases: ['tsmc', 'taiwan semiconductor'],       ticker: 'TSM',          name: 'TSMC'               },
+  { aliases: ['asml'],                               ticker: 'ASML',         name: 'ASML'               },
+  { aliases: ['qualcomm'],                           ticker: 'QCOM',         name: 'Qualcomm'           },
+  { aliases: ['broadcom'],                           ticker: 'AVGO',         name: 'Broadcom'           },
+  { aliases: ['micron'],                             ticker: 'MU',           name: 'Micron'             },
+  { aliases: ['arm holdings', 'arm chips', 'arm ipo'], ticker: 'ARM',        name: 'Arm Holdings'       },
+  { aliases: ['marvell'],                            ticker: 'MRVL',         name: 'Marvell'            },
+  { aliases: ['tokyo electron', ' tel '],            ticker: '8035.T',       name: 'Tokyo Electron'     },
+  { aliases: ['renesas'],                            ticker: '6723.T',       name: 'Renesas'            },
+  { aliases: ['samsung'],                            ticker: '005930.KS',    name: 'Samsung'            },
+  { aliases: ['sk hynix', 'hynix'],                  ticker: '000660.KS',    name: 'SK Hynix'           },
+  { aliases: ['lam research'],                       ticker: 'LRCX',         name: 'Lam Research'       },
+  { aliases: ['applied materials'],                  ticker: 'AMAT',         name: 'Applied Materials'  },
+  { aliases: ['kla corporation', ' kla '],           ticker: 'KLAC',         name: 'KLA'                },
+  // AI & Software
+  { aliases: ['microsoft'],                          ticker: 'MSFT',         name: 'Microsoft'          },
+  { aliases: ['alphabet', 'google', 'deepmind'],     ticker: 'GOOGL',        name: 'Alphabet'           },
+  { aliases: ['meta', 'facebook'],                   ticker: 'META',         name: 'Meta'               },
+  { aliases: ['palantir'],                           ticker: 'PLTR',         name: 'Palantir'           },
+  { aliases: ['uipath'],                             ticker: 'PATH',         name: 'UiPath'             },
+  { aliases: ['c3.ai', 'c3 ai'],                     ticker: 'AI',           name: 'C3.ai'              },
+  { aliases: ['servicenow'],                         ticker: 'NOW',          name: 'ServiceNow'         },
+  { aliases: ['salesforce'],                         ticker: 'CRM',          name: 'Salesforce'         },
+  { aliases: ['snowflake'],                          ticker: 'SNOW',         name: 'Snowflake'          },
+  { aliases: ['oracle'],                             ticker: 'ORCL',         name: 'Oracle'             },
+  // Manufacturing / Industrial
+  { aliases: ['fanuc'],                              ticker: '6954.T',       name: 'Fanuc'              },
+  { aliases: ['yaskawa'],                            ticker: '6506.T',       name: 'Yaskawa'            },
+  { aliases: ['keyence'],                            ticker: '6861.T',       name: 'Keyence'            },
+  { aliases: [' abb '],                              ticker: 'ABB',          name: 'ABB'                },
+  { aliases: ['rockwell automation', 'rockwell'],    ticker: 'ROK',          name: 'Rockwell Automation'},
+  { aliases: ['cognex'],                             ticker: 'CGNX',         name: 'Cognex'             },
+  { aliases: ['zebra technologies', 'zebra tech'],   ticker: 'ZBRA',         name: 'Zebra Technologies' },
+  { aliases: ['siemens'],                            ticker: 'SIE.DE',       name: 'Siemens'            },
+  { aliases: ['mitsubishi electric'],                ticker: '6503.T',       name: 'Mitsubishi Electric'},
+  { aliases: ['omron'],                              ticker: '6645.T',       name: 'Omron'              },
+  { aliases: ['emerson electric', 'emerson'],        ticker: 'EMR',          name: 'Emerson Electric'   },
+  { aliases: ['parker hannifin'],                    ticker: 'PH',           name: 'Parker Hannifin'    },
+  // Logistics
+  { aliases: ['honeywell'],                          ticker: 'HON',          name: 'Honeywell'          },
+  { aliases: ['kion'],                               ticker: 'KGX.DE',       name: 'KION Group'         },
+  { aliases: ['symbotic'],                           ticker: 'SYM',          name: 'Symbotic'           },
+  { aliases: ['autostore'],                          ticker: 'AUTO.OL',      name: 'Autostore'          },
+  { aliases: ['manhattan associates'],               ticker: 'MANH',         name: 'Manhattan Associates'},
+  // Automotive
+  { aliases: ['tesla'],                              ticker: 'TSLA',         name: 'Tesla'              },
+  { aliases: ['mobileye'],                           ticker: 'MBLY',         name: 'Mobileye'           },
+  { aliases: ['aptiv'],                              ticker: 'APTV',         name: 'Aptiv'              },
+  { aliases: ['luminar'],                            ticker: 'LAZR',         name: 'Luminar'            },
+  { aliases: ['ouster', 'velodyne lidar'],           ticker: 'OUST',         name: 'Ouster'             },
+  { aliases: ['toyota'],                             ticker: '7203.T',       name: 'Toyota'             },
+  { aliases: ['hyundai'],                            ticker: '005380.KS',    name: 'Hyundai'            },
+  { aliases: [' byd '],                              ticker: 'BYDDY',        name: 'BYD'                },
+  { aliases: [' nio '],                              ticker: 'NIO',          name: 'NIO'                },
+  { aliases: ['aurora innovation'],                  ticker: 'AUR',          name: 'Aurora Innovation'  },
+  // Defence
+  { aliases: ['lockheed martin', 'lockheed'],        ticker: 'LMT',          name: 'Lockheed Martin'    },
+  { aliases: ['raytheon', ' rtx '],                  ticker: 'RTX',          name: 'Raytheon'           },
+  { aliases: ['northrop grumman', 'northrop'],       ticker: 'NOC',          name: 'Northrop Grumman'   },
+  { aliases: ['l3harris'],                           ticker: 'LHX',          name: 'L3Harris'           },
+  { aliases: ['aerovironment'],                      ticker: 'AVAV',         name: 'AeroVironment'      },
+  { aliases: ['kratos defense', 'kratos'],           ticker: 'KTOS',         name: 'Kratos Defense'     },
+  { aliases: ['textron'],                            ticker: 'TXT',          name: 'Textron'            },
+  { aliases: ['ideaforge'],                          ticker: 'IDEAFORGE.NS', name: 'ideaForge'          },
+  // Healthcare
+  { aliases: ['intuitive surgical', 'intuitive'],    ticker: 'ISRG',         name: 'Intuitive Surgical' },
+  { aliases: ['stryker'],                            ticker: 'SYK',          name: 'Stryker'            },
+  { aliases: ['medtronic'],                          ticker: 'MDT',          name: 'Medtronic'          },
+  { aliases: ['dexcom'],                             ticker: 'DXCM',         name: 'DexCom'             },
+  // Space
+  { aliases: ['planet labs', ' planet '],            ticker: 'PL',           name: 'Planet Labs'        },
+  { aliases: ['rocket lab', 'rocketlab'],            ticker: 'RKLB',         name: 'Rocket Lab'         },
+  { aliases: ['iridium'],                            ticker: 'IRDM',         name: 'Iridium'            },
+  { aliases: ['spire global'],                       ticker: 'SPIR',         name: 'Spire Global'       },
+  // Agriculture
+  { aliases: ['john deere', 'deere'],                ticker: 'DE',           name: 'John Deere'         },
+  { aliases: ['cnh industrial', ' cnh '],            ticker: 'CNHI',         name: 'CNH Industrial'     },
+  { aliases: ['trimble'],                            ticker: 'TRMB',         name: 'Trimble'            },
+  { aliases: [' agco '],                             ticker: 'AGCO',         name: 'AGCO'               },
+];
+
+// Sector fallback tickers — used when no company is named in article text
+const SECTOR_FALLBACK_TICKERS = {
+  'AI & Software':  ['NVDA', 'MSFT', 'GOOGL'],
+  'Semiconductor':  ['NVDA', 'TSM', 'ASML'],
+  'Manufacturing':  ['6954.T', 'ROK', 'ABB'],
+  'Logistics':      ['HON', 'ZBRA', 'SYM'],
+  'Automotive':     ['TSLA', 'MBLY', 'APTV'],
+  'Defence':        ['LMT', 'RTX', 'NOC'],
+  'Healthcare':     ['ISRG', 'SYK', 'MDT'],
+  'Space':          ['RKLB', 'PL', 'IRDM'],
+  'Agriculture':    ['DE', 'TRMB', 'AGCO'],
+  'Consumer':       ['NVDA', 'MSFT', '005930.KS'],
+  'General':        ['NVDA', 'MSFT', 'ROK'],
+};
+
+function extractTickersFromText(text) {
+  const t = ' ' + text.toLowerCase() + ' ';   // pad so word-boundary aliases work
+  const found = [];
+  for (const company of COMPANY_TICKER_MAP) {
+    for (const alias of company.aliases) {
+      if (t.includes(alias)) { found.push(company.ticker); break; }
+    }
+  }
+  return [...new Set(found)];
+}
+
+function getSectorTickers(sector, text) {
+  const extracted = extractTickersFromText(text);
+  if (extracted.length > 0) return extracted.slice(0, 5);
+  return (SECTOR_FALLBACK_TICKERS[sector] || SECTOR_FALLBACK_TICKERS.General).slice(0, 3);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// YAHOO FINANCE — unofficial chart API, no key required (Node 20 native fetch)
+// ─────────────────────────────────────────────────────────────────────────────
+async function fetchStockData(ticker) {
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=35d`;
+    const res = await fetch(url, {
+      signal:  AbortSignal.timeout(8000),
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept':     'application/json'
+      }
+    });
+    if (!res.ok) throw new Error(`Yahoo ${res.status}`);
+    const data = await res.json();
+    const result = data?.chart?.result?.[0];
+    if (!result) throw new Error('Empty Yahoo result');
+
+    const meta       = result.meta;
+    const timestamps = result.timestamp || [];
+    const closes     = result.indicators?.quote?.[0]?.close || [];
+    const current    = meta.regularMarketPrice;
+    const currency   = meta.currency || 'USD';
+
+    // Scan backwards to find the last close at or before 7d/30d ago
+    const now = Date.now() / 1000;
+    let price7d = null, price30d = null;
+    for (let i = timestamps.length - 1; i >= 0; i--) {
+      const close = closes[i];
+      if (!close) continue;
+      if (price7d  === null && timestamps[i] <= now - 7  * 86400) price7d  = close;
+      if (price30d === null && timestamps[i] <= now - 30 * 86400) price30d = close;
+    }
+
+    return {
+      ticker,
+      name:      meta.shortName || meta.longName || ticker,
+      price:     current,
+      currency,
+      change7d:  price7d  && current ? +((current - price7d)  / price7d  * 100).toFixed(2) : null,
+      change30d: price30d && current ? +((current - price30d) / price30d * 100).toFixed(2) : null,
+      exchange:  meta.exchangeName || meta.exchange || '',
+      updatedAt: Date.now()
+    };
+  } catch (e) {
+    console.error(`  ✗ Stock ${ticker}: ${e.message}`);
+    return { ticker, price: null, error: e.message };
+  }
+}
+
+async function fetchMultipleStocks(tickers) {
+  const results = await Promise.all(tickers.map(t => fetchStockData(t)));
+  return results.reduce((acc, r) => { acc[r.ticker] = r; return acc; }, {});
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SIGNAL HISTORY — in-memory snapshots (MongoDB Atlas will persist in Phase 2)
+// ─────────────────────────────────────────────────────────────────────────────
+let signalHistory = [];  // newest first, max 30 snapshots
+
+async function captureSignalSnapshot(insights) {
+  if (!insights || insights.length === 0) return;
+
+  // Unique tickers across all insights (cap at 15 to limit API calls)
+  const allTickers = [...new Set(insights.flatMap(i => i.relevantTickers || []))].slice(0, 15);
+
+  let capturedPrices = {};
+  if (allTickers.length > 0) {
+    try {
+      console.log(`  → Capturing baseline prices for ${allTickers.length} global stocks…`);
+      capturedPrices = await fetchMultipleStocks(allTickers);
+      const ok = Object.values(capturedPrices).filter(p => p.price).length;
+      console.log(`  ✓ Stock baseline captured: ${ok}/${allTickers.length} tickers`);
+    } catch (e) {
+      console.error('  ✗ Stock capture failed:', e.message);
+    }
+  }
+
+  const snapshot = {
+    snapshotId:   Date.now(),
+    capturedAt:   Date.now(),
+    articleCount: (cache.articles || []).length,
+    signals: insights.map(i => ({
+      sector:     i.sector,
+      title:      i.title,
+      tag:        i.tag,
+      confidence: i.confidenceScore,
+      momentum:   i.momentum,
+      tickers:    i.relevantTickers || [],
+      prices:     Object.fromEntries(
+        (i.relevantTickers || [])
+          .filter(t => capturedPrices[t]?.price)
+          .map(t => [t, {
+            price:    capturedPrices[t].price,
+            currency: capturedPrices[t].currency || 'USD',
+            name:     capturedPrices[t].name     || t
+          }])
+      )
+    }))
+  };
+
+  signalHistory.unshift(snapshot);
+  if (signalHistory.length > 30) signalHistory = signalHistory.slice(0, 30);
+  console.log(`  ✓ Signal snapshot #${signalHistory.length} saved (${snapshot.signals.length} signals)`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // WEAK SIGNAL DETECTION KEYWORDS
 // ─────────────────────────────────────────────────────────────────────────────
 const WEAK_SIGNAL_PATTERNS = [
@@ -595,9 +822,11 @@ function buildInsightsLocally(articles) {
       // Priority scores
       ...priority,
       // India
-      indiaImpact:     india.indiaImpact,
-      indiaWhy:        india.indiaWhy,
-      indianCompanies: india.indianCompanies,
+      indiaImpact:      india.indiaImpact,
+      indiaWhy:         india.indiaWhy,
+      indianCompanies:  india.indianCompanies,
+      // Global stock tickers relevant to this signal
+      relevantTickers:  getSectorTickers(sector, text),
       // Evolution
       evolution:       evo1,
       firstSeen:       mem1.firstSeen
@@ -636,9 +865,11 @@ function buildInsightsLocally(articles) {
       // Priority scores
       ...priority,
       // India
-      indiaImpact:     india.indiaImpact,
-      indiaWhy:        india.indiaWhy,
-      indianCompanies: india.indianCompanies,
+      indiaImpact:      india.indiaImpact,
+      indiaWhy:         india.indiaWhy,
+      indianCompanies:  india.indianCompanies,
+      // Global stock tickers relevant to this signal
+      relevantTickers:  getSectorTickers(sector, text),
       // Evolution
       evolution:       evo2,
       firstSeen:       mem2.firstSeen
@@ -786,6 +1017,10 @@ async function refresh() {
   const { insights, weakSignals, narratives } = await generateInsights(articles);
 
   cache = { articles, insights, weakSignals, narratives, momentum: buildMomentum(articles), generatedAt: Date.now() };
+
+  // Non-blocking: capture stock baseline prices for the new insight set
+  captureSignalSnapshot(insights).catch(e => console.error('Snapshot error:', e.message));
+
   return cache;
 }
 
@@ -800,6 +1035,24 @@ app.post('/api/refresh', async (req, res) => {
 app.get('/api/cache',         (req, res) => res.json(cache));
 app.get('/api/narratives',    (req, res) => res.json({ narratives: cache.narratives || [], weakSignals: cache.weakSignals || [] }));
 app.post('/api/auto-refresh', (req, res) => res.json({ ok: true }));
+
+// ── Stock prices — live fetch from Yahoo Finance ──────────────────────────────
+app.get('/api/stock-prices', async (req, res) => {
+  const tickerParam = (req.query.tickers || '').trim();
+  if (!tickerParam) return res.json({ stocks: {}, error: 'No tickers provided' });
+  const tickers = tickerParam.split(',').map(t => t.trim()).filter(Boolean).slice(0, 12);
+  try {
+    const stocks = await fetchMultipleStocks(tickers);
+    res.json({ stocks, updatedAt: Date.now() });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Signal history ────────────────────────────────────────────────────────────
+app.get('/api/signal-history', (req, res) => {
+  res.json({ history: signalHistory, count: signalHistory.length });
+});
 
 app.get('/api/test-gemini', async (req, res) => {
   if (!GEMINI_KEY) return res.json({ ok: false, error: 'GEMINI_API_KEY not set' });
@@ -825,4 +1078,5 @@ app.listen(PORT, () => {
   console.log(`   Gemini     : ${GEMINI_KEY   ? '✓' : '✗'}`);
   console.log(`   Groq backup: ${GROQ_KEY     ? '✓' : '✗'}`);
   console.log(`   Upgrades   : Confidence Engine | Signal Memory | Weak Signals | Narratives | Why This Matters | Next To Watch | Threat Intel | Priority Scores | Time Horizon`);
+  console.log(`   Stock Intel: Yahoo Finance API | ~70-company ticker map | Signal History snapshots`);
 });
