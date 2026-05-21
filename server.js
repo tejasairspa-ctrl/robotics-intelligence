@@ -5,7 +5,7 @@ const express     = require('express');
 const cors        = require('cors');
 const cron        = require('node-cron');
 const path        = require('path');
-const { MongoClient } = require('mongodb');
+const { MongoClient, ObjectId } = require('mongodb');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -528,7 +528,8 @@ async function fetchMultipleStocks(tickers) {
 // ─────────────────────────────────────────────────────────────────────────────
 // SIGNAL HISTORY — in-memory snapshots (MongoDB Atlas will persist in Phase 2)
 // ─────────────────────────────────────────────────────────────────────────────
-let signalHistory = [];  // newest first, max 30 snapshots
+let signalHistory = [];         // newest first, max 30 snapshots
+let trackedSignalsMemory = [];  // in-memory fallback for tracked signals
 
 async function captureSignalSnapshot(insights) {
   if (!insights || insights.length === 0) return;
@@ -1119,6 +1120,77 @@ app.get('/api/signal-history', async (req, res) => {
     }
   }
   res.json({ history: signalHistory, count: signalHistory.length, source: 'memory' });
+});
+
+// ── Track signal — save a manually bookmarked insight ─────────────────────────
+app.post('/api/track-signal', async (req, res) => {
+  const { sector, title, tag, confidence, confidenceScore, momentum,
+          tickers, baselinePrices, action, indiaImpact, indiaWhy, why } = req.body;
+  if (!sector || !title) return res.status(400).json({ error: 'Missing sector or title' });
+
+  const doc = {
+    trackedAt:       new Date(),
+    sector,
+    title,
+    tag:             tag             || 'watch',
+    confidence:      confidence      || '',
+    confidenceScore: confidenceScore || 0,
+    momentum:        momentum        || '',
+    tickers:         tickers         || [],
+    baselinePrices:  baselinePrices  || {},
+    action:          action          || '',
+    indiaImpact:     indiaImpact     || '',
+    indiaWhy:        indiaWhy        || '',
+    why:             why             || ''
+  };
+
+  if (mongoDb) {
+    try {
+      const result = await mongoDb.collection('trackedSignals').insertOne({ ...doc });
+      console.log(`  ✓ Signal tracked: ${sector} — ${title.slice(0, 50)}`);
+      return res.json({ ok: true, id: result.insertedId.toString() });
+    } catch (e) {
+      console.error('  ✗ Track signal save failed:', e.message);
+    }
+  }
+  const memDoc = { ...doc, _id: Date.now().toString() };
+  trackedSignalsMemory.unshift(memDoc);
+  res.json({ ok: true, id: memDoc._id });
+});
+
+// ── Get all tracked signals ───────────────────────────────────────────────────
+app.get('/api/tracked-signals', async (req, res) => {
+  if (mongoDb) {
+    try {
+      const docs = await mongoDb.collection('trackedSignals')
+        .find({})
+        .sort({ trackedAt: -1 })
+        .toArray();
+      return res.json({
+        signals: docs.map(d => ({ ...d, _id: d._id.toString() })),
+        source: 'mongodb'
+      });
+    } catch (e) {
+      console.error('  ✗ Tracked signals fetch failed:', e.message);
+    }
+  }
+  res.json({ signals: trackedSignalsMemory, source: 'memory' });
+});
+
+// ── Untrack / delete a tracked signal ────────────────────────────────────────
+app.delete('/api/untrack-signal/:id', async (req, res) => {
+  const { id } = req.params;
+  if (mongoDb) {
+    try {
+      await mongoDb.collection('trackedSignals').deleteOne({ _id: new ObjectId(id) });
+      console.log(`  ✓ Signal untracked: ${id}`);
+      return res.json({ ok: true });
+    } catch (e) {
+      console.error('  ✗ Untrack failed:', e.message);
+    }
+  }
+  trackedSignalsMemory = trackedSignalsMemory.filter(s => s._id !== id);
+  res.json({ ok: true });
 });
 
 app.get('/api/test-gemini', async (req, res) => {

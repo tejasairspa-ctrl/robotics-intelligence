@@ -624,6 +624,22 @@ body.dark .stock-chg-dn{color:#f87171}
 /* ── HISTORY PAGE EMPTY STATE ───────────────────────────────────────────────── */
 .hist-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:16px;text-align:center;color:var(--muted)}
 .hist-empty-icon{width:56px;height:56px;border-radius:50%;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);display:flex;align-items:center;justify-content:center}
+
+/* ── TRACK BUTTON ────────────────────────────────────────────────────────────── */
+.track-btn{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--muted);transition:all .15s;white-space:nowrap;line-height:1.4}
+.track-btn:hover{border-color:rgba(99,102,241,.5);color:var(--accent);background:rgba(99,102,241,.06)}
+.track-btn.tracked{background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.3);color:#059669}
+.track-btn.tracking-spinner{opacity:.6;cursor:wait}
+body.dark .track-btn.tracked{color:#34d399;background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.25)}
+/* ── TRACKED SIGNAL CARD ─────────────────────────────────────────────────────── */
+.tracked-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;position:relative}
+.tracked-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.tracked-card-meta{font-size:10px;color:var(--muted);margin-top:2px}
+.tracked-card-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px;line-height:1.4}
+.tracked-card-action{font-size:11px;color:var(--accent);margin-top:8px;line-height:1.5}
+.untrack-btn{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid rgba(220,38,38,.2);background:rgba(220,38,38,.05);color:#dc2626;transition:all .15s;white-space:nowrap}
+.untrack-btn:hover{background:rgba(220,38,38,.12);border-color:rgba(220,38,38,.4)}
+body.dark .untrack-btn{color:#f87171;background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.2)}
 </style>
 </head>
 <body>
@@ -1499,6 +1515,106 @@ function renderFusion() {
   </div>`;
 }
 
+// ===================== TRACK SIGNAL =====================
+// trackedSigs: Set of "sector::tag::title30" keys → drives button state
+const trackedSigs   = new Set();
+const trackedIdMap  = {};  // sigKey → MongoDB _id (for untrack)
+
+function sigKey(ins) {
+  return `${ins.sector}::${ins.tag}::${(ins.title||'').slice(0,40)}`;
+}
+
+async function loadTrackedIds() {
+  try {
+    const res = await fetch(`${API_BASE}/api/tracked-signals`);
+    if (!res.ok) return;
+    const data = await res.json();
+    trackedSigs.clear();
+    (data.signals || []).forEach(s => {
+      const k = sigKey(s);
+      trackedSigs.add(k);
+      trackedIdMap[k] = s._id;
+    });
+  } catch(e) { /* offline */ }
+}
+
+async function trackSignal(insIdx) {
+  const ins = (window._currentInsights || [])[insIdx];
+  if (!ins) return;
+
+  const btn = document.getElementById(`track-btn-${insIdx}`);
+  const key = sigKey(ins);
+
+  // Toggle OFF — untrack
+  if (trackedSigs.has(key)) {
+    const id = trackedIdMap[key];
+    if (!id) return;
+    if (btn) { btn.className = 'track-btn tracking-spinner'; btn.textContent = 'Removing…'; }
+    try {
+      await fetch(`${API_BASE}/api/untrack-signal/${id}`, { method: 'DELETE' });
+      trackedSigs.delete(key);
+      delete trackedIdMap[key];
+      if (btn) { btn.className = 'track-btn'; btn.innerHTML = '📌 Track'; }
+    } catch(e) {
+      if (btn) { btn.className = 'track-btn tracked'; btn.innerHTML = '✓ Tracking'; }
+    }
+    return;
+  }
+
+  // Toggle ON — track
+  if (btn) { btn.className = 'track-btn tracking-spinner'; btn.textContent = 'Saving…'; }
+
+  // Fetch live baseline prices for this insight's tickers
+  let baselinePrices = {};
+  if (ins.relevantTickers && ins.relevantTickers.length) {
+    try {
+      await fetchLiveStocks(ins.relevantTickers);
+      ins.relevantTickers.forEach(t => {
+        if (stockCache[t]?.price) {
+          baselinePrices[t] = {
+            price:    stockCache[t].price,
+            currency: stockCache[t].currency || 'USD',
+            name:     stockCache[t].name || t
+          };
+        }
+      });
+    } catch(e) { /* no prices — save without baseline */ }
+  }
+
+  const payload = {
+    sector:         ins.sector,
+    title:          ins.title,
+    tag:            ins.tag,
+    confidence:     ins.confidence,
+    confidenceScore:ins.confidenceScore,
+    momentum:       ins.momentum,
+    tickers:        ins.relevantTickers || [],
+    baselinePrices,
+    action:         ins.action,
+    indiaImpact:    ins.indiaImpact,
+    indiaWhy:       ins.indiaWhy,
+    why:            ins.why
+  };
+
+  try {
+    const res  = await fetch(`${API_BASE}/api/track-signal`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.ok) {
+      trackedSigs.add(key);
+      trackedIdMap[key] = data.id;
+      if (btn) { btn.className = 'track-btn tracked'; btn.innerHTML = '✓ Tracking'; }
+    } else {
+      if (btn) { btn.className = 'track-btn'; btn.innerHTML = '📌 Track'; }
+    }
+  } catch(e) {
+    if (btn) { btn.className = 'track-btn'; btn.innerHTML = '📌 Track'; }
+  }
+}
+
 // ===================== SIGNAL HISTORY =====================
 // stockCache: ticker → { price, currency, name, change7d, change30d } fetched fresh
 const stockCache = {};
@@ -1573,33 +1689,33 @@ async function renderHistory() {
   c.innerHTML = `
   <div class="grid grid-4" style="margin-bottom:20px">
     <div class="card card-sm">
-      <div class="card-title">Snapshots Stored</div>
+      <div class="card-title">Tracked Signals</div>
       <div class="card-value" id="hist-stat-snaps" style="color:#a78bfa">—</div>
-      <div class="card-delta">Signal cycles tracked</div>
+      <div class="card-delta">Manually bookmarked</div>
     </div>
     <div class="card card-sm">
       <div class="card-title">Tickers Tracked</div>
       <div class="card-value" id="hist-stat-tickers" style="color:var(--teal)">—</div>
-      <div class="card-delta">Global exchanges covered</div>
+      <div class="card-delta">Global stocks with baseline</div>
     </div>
     <div class="card card-sm">
       <div class="card-title">Invest Signals</div>
       <div class="card-value" id="hist-stat-invest" style="color:#34d399">—</div>
-      <div class="card-delta">High-conviction recorded</div>
+      <div class="card-delta">High-conviction tracked</div>
     </div>
     <div class="card card-sm">
-      <div class="card-title">Data Since</div>
+      <div class="card-title">Tracking Since</div>
       <div class="card-value" id="hist-stat-since" style="font-size:15px;color:#818cf8">—</div>
-      <div class="card-delta">First snapshot recorded</div>
+      <div class="card-delta">First signal tracked</div>
     </div>
   </div>
 
   <div style="background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.2);border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:12px;color:#a78bfa;display:flex;align-items:flex-start;gap:10px">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
     <div>
-      <strong>How this works:</strong> Each time you click Refresh Intelligence, a snapshot is saved with signals and baseline stock prices. Stock chips below show the % change since the signal was captured — or live 7-day change if captured price is unavailable.
-      Stock prices are fetched live from Yahoo Finance (global exchanges — NYSE, NASDAQ, TSE, KRX, FSE, LSE).
-      <span style="color:var(--muted);margin-left:4px">Data is in-memory only until MongoDB Atlas is connected.</span>
+      <strong>How this works:</strong> Click <strong style="color:#c4b5fd">📌 Track</strong> on any insight card to bookmark it here with a stock price baseline captured at that moment.
+      Stock chips below show live price vs the baseline — so you can see how the trade has moved since you tracked it.
+      Click <strong style="color:#f87171">Untrack</strong> to remove a signal.
     </div>
   </div>
 
@@ -1607,25 +1723,31 @@ async function renderHistory() {
     <div style="display:flex;align-items:center;justify-content:center;min-height:40vh;color:var(--muted);font-size:13px">
       <div style="text-align:center">
         <div style="font-size:24px;margin-bottom:8px">⏳</div>
-        Loading signal history…
+        Loading tracked signals…
       </div>
     </div>
   </div>`;
 
-  // Fetch history from server
-  let history = [];
+  // Fetch tracked signals
+  let signals = [];
   try {
-    const res  = await fetch(`${API_BASE}/api/signal-history`);
+    const res = await fetch(`${API_BASE}/api/tracked-signals`);
     if (res.ok) {
       const data = await res.json();
-      history = data.history || [];
+      signals = data.signals || [];
+      // Sync the trackedSigs set so buttons on Opportunity page stay correct
+      trackedSigs.clear();
+      signals.forEach(s => {
+        const k = sigKey(s);
+        trackedSigs.add(k);
+        trackedIdMap[k] = s._id;
+      });
     }
-  } catch (e) { /* offline */ }
+  } catch(e) { /* offline */ }
 
   const histContent = document.getElementById('hist-content');
 
-  if (history.length === 0) {
-    // Update stats
+  if (signals.length === 0) {
     document.getElementById('hist-stat-snaps').textContent   = '0';
     document.getElementById('hist-stat-tickers').textContent = '0';
     document.getElementById('hist-stat-invest').textContent  = '0';
@@ -1634,101 +1756,114 @@ async function renderHistory() {
     histContent.innerHTML = `
     <div class="hist-empty">
       <div class="hist-empty-icon">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.8"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
       </div>
       <div>
-        <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px">No Signal History Yet</div>
+        <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px">No Tracked Signals Yet</div>
         <div style="font-size:13px;color:var(--muted);max-width:380px;line-height:1.7">
-          Click <strong style="color:var(--teal)">Refresh Intelligence</strong> in the top bar to generate your first signal snapshot.
-          Each refresh captures signals + global stock prices as a baseline.
+          Go to <strong style="color:var(--accent)">Opportunity Engine</strong>, refresh to get live signals, then click
+          <strong style="color:#a78bfa">📌 Track</strong> on any card you want to monitor.
+          The stock prices at that moment are saved as your baseline.
         </div>
       </div>
     </div>`;
     return;
   }
 
-  // Compute stats
-  const allTickers  = [...new Set(history.flatMap(s => s.signals.flatMap(sig => sig.tickers || [])))];
-  const investCount = history.reduce((s, snap) => s + snap.signals.filter(sig => sig.tag === 'invest').length, 0);
-  const oldest      = history[history.length - 1]?.capturedAt;
+  // Stats
+  const allTickers  = [...new Set(signals.flatMap(s => s.tickers || []))];
+  const investCount = signals.filter(s => s.tag === 'invest').length;
+  const oldest      = signals[signals.length - 1]?.trackedAt;
 
-  document.getElementById('hist-stat-snaps').textContent   = history.length;
+  document.getElementById('hist-stat-snaps').textContent   = signals.length;
   document.getElementById('hist-stat-tickers').textContent = allTickers.length;
   document.getElementById('hist-stat-invest').textContent  = investCount;
   document.getElementById('hist-stat-since').textContent   = oldest
     ? new Date(oldest).toLocaleDateString([], { month: 'short', day: 'numeric' })
     : '—';
 
-  // Pre-fetch live prices for all tracked tickers
-  await fetchLiveStocks(allTickers.slice(0, 20));
+  // Pre-fetch live prices
+  await fetchLiveStocks(allTickers.slice(0, 25));
 
-  // Render snapshots
+  // Render each tracked signal as a card
   histContent.innerHTML = '';
-  history.forEach((snap, snapIdx) => {
-    const snapDate   = new Date(snap.capturedAt);
-    const dateStr    = snapDate.toLocaleDateString([], { month:'short', day:'numeric' });
-    const timeStr    = snapDate.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
-    const investN    = snap.signals.filter(s => s.tag === 'invest').length;
-    const watchN     = snap.signals.filter(s => s.tag === 'watch').length;
-    const tickerSet  = [...new Set(snap.signals.flatMap(s => s.tickers || []))];
+  signals.forEach((sig, idx) => {
+    const trackedDate = new Date(sig.trackedAt);
+    const dateStr     = trackedDate.toLocaleDateString([], { month:'short', day:'numeric' });
+    const timeStr     = trackedDate.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+    const tagCls      = sig.tag === 'invest' ? 'hist-invest' : sig.tag === 'watch' ? 'hist-watch' : 'hist-saturated';
+    const tagLabel    = sig.tag === 'invest' ? '🟢 INVEST' : sig.tag === 'watch' ? '🟡 WATCH' : '🔴 SATURATED';
+    const borderColor = sig.tag === 'invest' ? '#10b981' : sig.tag === 'watch' ? '#f59e0b' : '#ef4444';
 
-    const snapEl = document.createElement('div');
-    snapEl.className = 'hist-snapshot';
-    snapEl.innerHTML = `
-      <div class="hist-snapshot-header">
-        <div>
-          <div class="hist-snapshot-time">${dateStr} · ${timeStr}
-            ${snapIdx === 0 ? '<span style="font-size:9px;font-weight:800;color:#10b981;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.25);padding:1px 6px;border-radius:4px;margin-left:6px;letter-spacing:.4px">LATEST</span>' : ''}
+    const card = document.createElement('div');
+    card.className = 'tracked-card';
+    card.style.borderTop = `2px solid ${borderColor}`;
+
+    card.innerHTML = `
+      <div class="tracked-card-header">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:4px">
+            <span class="hist-tag ${tagCls}" style="margin-top:0">${tagLabel}</span>
+            <span class="signal-tag">${sig.sector}</span>
+            ${sig.momentum ? `<span class="signal-tag" style="color:${sig.momentum==='high'?'var(--green)':sig.momentum==='medium'?'var(--yellow)':'var(--muted)'}">${sig.momentum} momentum</span>` : ''}
+            ${idx === 0 ? '<span style="font-size:9px;font-weight:800;color:#10b981;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.25);padding:1px 6px;border-radius:4px;letter-spacing:.4px">LATEST</span>' : ''}
           </div>
-          <div class="hist-snapshot-sub">${snap.articleCount || 0} articles · ${snap.signals.length} signals</div>
+          <div class="tracked-card-title">${sig.title}</div>
+          <div class="tracked-card-meta">Tracked ${dateStr} at ${timeStr} · ${sig.confidence || ''} confidence · ${sig.confidenceScore || 0} pts</div>
         </div>
-        <div class="hist-snap-badge">
-          ${investN > 0 ? `<span class="hist-stat-pill" style="background:rgba(16,185,129,.1);color:#059669;border-color:rgba(16,185,129,.2)">${investN} INVEST</span>` : ''}
-          ${watchN  > 0 ? `<span class="hist-stat-pill" style="background:rgba(245,158,11,.1);color:#d97706;border-color:rgba(245,158,11,.2)">${watchN} WATCH</span>` : ''}
-          <span class="hist-stat-pill">${tickerSet.length} stocks</span>
+        <button class="untrack-btn" onclick="untrackFromHistory('${sig._id}', this, ${idx})">✕ Untrack</button>
+      </div>
+
+      ${sig.why ? `<div style="font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:8px;padding-left:2px">${sig.why}</div>` : ''}
+      ${sig.action ? `<div class="tracked-card-action">→ ${sig.action}</div>` : ''}
+
+      ${sig.tickers && sig.tickers.length ? `
+      <div style="margin-top:10px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:7px">
+        <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;gap:5px">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+          Live vs Baseline · Tracked ${dateStr}
         </div>
-      </div>`;
+        <div class="stock-chips-row" id="hist-chips-${idx}"></div>
+      </div>` : ''}
 
-    // Show signals grouped — INVEST first then WATCH
-    const sorted = [...snap.signals].sort((a, b) => {
-      const o = { invest: 0, watch: 1, saturated: 2 };
-      return (o[a.tag] || 1) - (o[b.tag] || 1);
-    });
+      ${sig.indiaImpact ? `
+      <div style="margin-top:10px;padding:7px 11px;background:rgba(251,146,60,.05);border:1px solid rgba(251,146,60,.2);border-radius:6px;font-size:11px">
+        <span style="font-weight:700;color:#fb923c">🇮🇳 India Impact: ${sig.indiaImpact}</span>
+        ${sig.indiaWhy ? `<span style="color:var(--muted);margin-left:6px">${sig.indiaWhy}</span>` : ''}
+      </div>` : ''}
+    `;
 
-    // De-dup by sector+tag (show unique sectors only)
-    const seen = new Set();
-    const unique = sorted.filter(s => {
-      const key = `${s.sector}-${s.tag}`;
-      if (seen.has(key)) return false;
-      seen.add(key); return true;
-    });
+    histContent.appendChild(card);
 
-    unique.forEach(sig => {
-      const rowEl = document.createElement('div');
-      rowEl.className = 'hist-signal-row';
-
-      const tagCls   = sig.tag === 'invest' ? 'hist-invest' : sig.tag === 'watch' ? 'hist-watch' : 'hist-saturated';
-      const tagLabel = sig.tag === 'invest' ? '● INVEST' : sig.tag === 'watch' ? '● WATCH' : '● SAT';
-
-      rowEl.innerHTML = `
-        <span class="hist-tag ${tagCls}">${tagLabel}</span>
-        <div class="hist-signal-info">
-          <div class="hist-signal-title" title="${sig.title}">${sig.title}</div>
-          <div class="hist-signal-sector">${sig.sector} · ${sig.confidence || '—'} confidence · ${sig.momentum || ''} momentum</div>
-          <div class="stock-chips-row" id="chips-${snapIdx}-${sig.sector.replace(/[^a-z]/gi,'')}-${sig.tag}"></div>
-        </div>`;
-
-      snapEl.appendChild(rowEl);
-
-      // Render stock chips with live prices + delta vs capture
-      const chipsContainer = rowEl.querySelector(`#chips-${snapIdx}-${sig.sector.replace(/[^a-z]/gi,'')}-${sig.tag}`);
-      if (chipsContainer && sig.tickers && sig.tickers.length > 0) {
-        renderStockChips(sig.tickers, sig.prices || {}, chipsContainer);
-      }
-    });
-
-    histContent.appendChild(snapEl);
+    // Render stock chips with baseline comparison
+    if (sig.tickers && sig.tickers.length) {
+      const chipsEl = card.querySelector(`#hist-chips-${idx}`);
+      if (chipsEl) renderStockChips(sig.tickers, sig.baselinePrices || {}, chipsEl);
+    }
   });
+}
+
+async function untrackFromHistory(id, btnEl, idx) {
+  if (btnEl) { btnEl.textContent = 'Removing…'; btnEl.disabled = true; }
+  try {
+    await fetch(`${API_BASE}/api/untrack-signal/${id}`, { method: 'DELETE' });
+    // Remove from trackedSigs
+    for (const [k, v] of Object.entries(trackedIdMap)) {
+      if (v === id) { trackedSigs.delete(k); delete trackedIdMap[k]; break; }
+    }
+    // Remove card from DOM
+    const card = btnEl?.closest('.tracked-card');
+    if (card) {
+      card.style.opacity = '0';
+      card.style.transition = 'opacity .25s';
+      setTimeout(() => card.remove(), 260);
+    }
+    // Update stat counter
+    const statEl = document.getElementById('hist-stat-snaps');
+    if (statEl) statEl.textContent = Math.max(0, parseInt(statEl.textContent || '0') - 1);
+  } catch(e) {
+    if (btnEl) { btnEl.textContent = '✕ Untrack'; btnEl.disabled = false; }
+  }
 }
 
 // ===================== OFFLINE BANNER =====================
@@ -1946,7 +2081,9 @@ function renderOpportunity() {
       return `${Math.round(hours/24)}d tracked`;
     };
 
-    filteredInsights.forEach((ins) => {
+    window._currentInsights = filteredInsights;
+    filteredInsights.forEach((ins, insIdx) => {
+      const isTracked = trackedSigs.has(sigKey(ins));
       const el = document.createElement('div');
       el.className = `signal-card ${ins.tag}`;
       const borderColor = ins.tag==='invest'?'#10b981':ins.tag==='watch'?'#f59e0b':'#ef4444';
@@ -1964,6 +2101,7 @@ function renderOpportunity() {
             ${ins.sector?`<span class="signal-tag">${ins.sector}</span>`:''}
             ${ins.vcl?`<span class="signal-tag">${ins.vcl}</span>`:''}
             ${ins.timeHorizon?`<span class="time-badge ${timeClass(ins.timeHorizon.label)}">${timeIcon(ins.timeHorizon.label)} ${ins.timeHorizon.label}</span>`:''}
+            <button class="track-btn${isTracked?' tracked':''}" id="track-btn-${insIdx}" onclick="trackSignal(${insIdx})">${isTracked?'✓ Tracking':'📌 Track'}</button>
           </div>
         </div>
 
@@ -2830,6 +2968,7 @@ document.getElementById('modal-overlay').addEventListener('click',e=>{
 });
 
 // ===================== INIT =====================
+loadTrackedIds();   // pre-populate track button states before first render
 navigate('opportunity');
 </script>
 </body>
