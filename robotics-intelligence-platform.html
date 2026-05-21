@@ -1589,6 +1589,7 @@ async function trackSignal(insIdx) {
     confidenceScore:ins.confidenceScore,
     momentum:       ins.momentum,
     tickers:        ins.relevantTickers || [],
+    indianTickers:  ins.indianTickers  || [],
     baselinePrices,
     action:         ins.action,
     indiaImpact:    ins.indiaImpact,
@@ -1617,20 +1618,33 @@ async function trackSignal(insIdx) {
 
 // ===================== SIGNAL HISTORY =====================
 // stockCache: ticker → { price, currency, name, change7d, change30d } fetched fresh
-const stockCache = {};
+const stockCache    = {};
+const stockPromises = {}; // ticker → in-flight Promise — prevents duplicate concurrent fetches
 
 async function fetchLiveStocks(tickers) {
-  const missing = tickers.filter(t => !stockCache[t] || (Date.now() - (stockCache[t]._ts||0)) > 5*60*1000);
-  if (missing.length === 0) return;
-  try {
-    const url = `${API_BASE}/api/stock-prices?tickers=${missing.join(',')}`;
-    const res  = await fetch(url);
-    if (!res.ok) return;
-    const data = await res.json();
-    for (const [ticker, info] of Object.entries(data.stocks || {})) {
-      stockCache[ticker] = { ...info, _ts: Date.now() };
-    }
-  } catch (e) { /* silently skip */ }
+  const stale = tickers.filter(t => !stockCache[t] || (Date.now() - (stockCache[t]._ts||0)) > 5*60*1000);
+  if (stale.length === 0) return;
+
+  // Only fire a new request for tickers not already being fetched
+  const toFetch = stale.filter(t => !stockPromises[t]);
+  if (toFetch.length > 0) {
+    const p = (async () => {
+      try {
+        const url  = `${API_BASE}/api/stock-prices?tickers=${toFetch.join(',')}`;
+        const res  = await fetch(url);
+        if (!res.ok) return;
+        const data = await res.json();
+        for (const [ticker, info] of Object.entries(data.stocks || {})) {
+          stockCache[ticker] = { ...info, _ts: Date.now() };
+        }
+      } catch (e) { /* silently skip */ }
+      finally { toFetch.forEach(t => { if (stockPromises[t] === p) delete stockPromises[t]; }); }
+    })();
+    toFetch.forEach(t => stockPromises[t] = p);
+  }
+
+  // Wait for all stale tickers (both newly fired and already in-flight)
+  await Promise.all([...new Set(stale.map(t => stockPromises[t]).filter(Boolean))]);
 }
 
 function renderStockChips(tickers, capturedPrices, container) {
@@ -2171,6 +2185,14 @@ function renderOpportunity() {
           <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px">
             ${ins.indianCompanies.map(c => `<span class="india-co-chip">${c}</span>`).join('')}
           </div>` : ''}
+          ${ins.indianTickers && ins.indianTickers.length ? `
+          <div style="margin-top:8px;padding-top:7px;border-top:1px solid rgba(251,146,60,.15)">
+            <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:rgba(251,146,60,.7);margin-bottom:5px;display:flex;align-items:center;gap:4px">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+              NSE Live
+            </div>
+            <div class="stock-chips-row" id="indstock-${insIdx}"></div>
+          </div>` : ''}
         </div>` : ''}
 
         <!-- THREAT INTELLIGENCE (Upgrade 8) -->
@@ -2190,15 +2212,20 @@ function renderOpportunity() {
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
             Global Stocks in Focus
           </div>
-          <div class="stock-chips-row" id="insstock-${ins.sector.replace(/[^a-z]/gi,'')}-${ins.tag}"></div>
+          <div class="stock-chips-row" id="insstock-${insIdx}"></div>
         </div>` : ''}
       `;
       grid.appendChild(el);
 
-      // Render stock chips for this insight card
+      // Render global stock chips
       if (ins.relevantTickers && ins.relevantTickers.length) {
-        const stockRow = grid.querySelector(`#insstock-${ins.sector.replace(/[^a-z]/gi,'')}-${ins.tag}`);
+        const stockRow = grid.querySelector(`#insstock-${insIdx}`);
         if (stockRow) renderStockChips(ins.relevantTickers, {}, stockRow);
+      }
+      // Render Indian NSE stock chips
+      if (ins.indianTickers && ins.indianTickers.length) {
+        const indRow = grid.querySelector(`#indstock-${insIdx}`);
+        if (indRow) renderStockChips(ins.indianTickers, {}, indRow);
       }
     });
   }

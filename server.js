@@ -453,6 +453,57 @@ const SECTOR_FALLBACK_TICKERS = {
   'General':        ['NVDA', 'MSFT', 'ROK'],
 };
 
+// Indian listed companies → NSE ticker  (null = private, no listing)
+const INDIA_COMPANY_TICKER_MAP = {
+  // Defence
+  'ideaForge Technology':      'IDEAFORGE.NS',
+  'ideaForge':                 'IDEAFORGE.NS',
+  'Data Patterns':             'DATAPATTNS.NS',
+  // Automotive
+  'Tata Motors':               'TATAMOTORS.NS',
+  'Mahindra Electric':         'M&M.NS',
+  'Ola Electric':              'OLAELEC.NS',
+  // Semiconductor / Electronics
+  'CG Power':                  'CGPOWER.NS',
+  'Kaynes Technology':         'KAYNES.NS',
+  'Tata Electronics':          null,          // not separately listed
+  // AI & Software
+  'Tata Consultancy Services': 'TCS.NS',
+  'Infosys':                   'INFY.NS',
+  'Tech Mahindra':             'TECHM.NS',
+  'Persistent Systems':        'PERSISTENT.NS',
+  'Mphasis':                   'MPHASIS.NS',
+  'KPIT Technologies':         'KPITTECH.NS',
+  // Manufacturing
+  'Jyoti CNC':                 'JYOTICNC.NS',
+  'Bharat Forge':              'BHARATFORG.NS',
+  // Space
+  'Skyroot Aerospace':         null,
+  'Agnikul Cosmos':            null,
+  'Pixxel':                    null,
+  // Healthcare (all private)
+  'Niramai':                   null,
+  'Sigtuple':                  null,
+  'Qure.ai':                   null,
+  // Logistics (all private)
+  'GreyOrange':                null,
+  'Addverb Technologies':      null,
+  'ElasticRun':                null,
+  // Agriculture (all private)
+  'CropIn':                    null,
+  'Intello Labs':               null,
+  'Fasal':                     null,
+  // Consumer (all private)
+  'Milagrow Robots':           null,
+  'Robosapiens India':         null,
+  'Aqara India':               null,
+};
+
+function getIndianTickers(companies) {
+  if (!companies || companies.length === 0) return [];
+  return companies.map(c => INDIA_COMPANY_TICKER_MAP[c]).filter(Boolean);
+}
+
 function extractTickersFromText(text) {
   const t = ' ' + text.toLowerCase() + ' ';   // pad so word-boundary aliases work
   const found = [];
@@ -882,6 +933,8 @@ function buildInsightsLocally(articles) {
       indianCompanies:  india.indianCompanies,
       // Global stock tickers relevant to this signal
       relevantTickers:  getSectorTickers(sector, text),
+      // Indian listed companies relevant to this sector
+      indianTickers:    getIndianTickers(india.indianCompanies),
       // Evolution
       evolution:       evo1,
       firstSeen:       mem1.firstSeen
@@ -925,6 +978,8 @@ function buildInsightsLocally(articles) {
       indianCompanies:  india.indianCompanies,
       // Global stock tickers relevant to this signal
       relevantTickers:  getSectorTickers(sector, text),
+      // Indian listed companies relevant to this sector
+      indianTickers:    getIndianTickers(india.indianCompanies),
       // Evolution
       evolution:       evo2,
       firstSeen:       mem2.firstSeen
