@@ -787,24 +787,6 @@ body.dark .untrack-btn{color:#f87171;background:rgba(239,68,68,.08);border-color
       </div>
       Opportunity Engine
     </div>
-    <div class="nav-item" onclick="navigate('market')">
-      <div class="nav-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-      </div>
-      Market Structure
-    </div>
-    <div class="nav-item" onclick="navigate('capital')">
-      <div class="nav-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
-      </div>
-      Capital Intelligence
-    </div>
-    <div class="nav-item" onclick="navigate('heatmap')">
-      <div class="nav-icon">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
-      </div>
-      Cross-Map Heatmap
-    </div>
     <div class="nav-item" onclick="navigate('companies')">
       <div class="nav-icon">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
@@ -824,12 +806,6 @@ body.dark .untrack-btn{color:#f87171;background:rgba(239,68,68,.08);border-color
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
       </div>
       Live Signals
-    </div>
-    <div class="nav-item" onclick="navigate('momentum')">
-      <div class="nav-icon" style="color:var(--teal)">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-      </div>
-      Momentum Tracker
     </div>
     <div class="nav-item" onclick="navigate('fusion')">
       <div class="nav-icon" style="color:var(--teal)">
@@ -1123,19 +1099,15 @@ const AUTO_REFRESH_INTERVAL_MS = 20 * 60 * 1000; // 20 minutes
 // ===================== NAVIGATE =====================
 function navigate(tab) {
   currentTab = tab;
-  const allTabs = ['opportunity','market','capital','heatmap','companies','query','live','momentum','fusion','history'];
-  document.querySelectorAll('.nav-item').forEach((el,i) => {
-    el.classList.toggle('active', allTabs[i] === tab);
+  document.querySelectorAll('.nav-item').forEach(el => {
+    const m = (el.getAttribute('onclick') || '').match(/navigate\('(\w+)'\)/);
+    el.classList.toggle('active', !!(m && m[1] === tab));
   });
   const titles = {
     opportunity: ['Opportunity Engine','Live AI insights from GNews · Claude-powered · click Refresh to load'],
-    market:      ['Market Structure','Distribution analysis · Industry & Value Chain breakdown'],
-    capital:     ['Capital Intelligence','Where funding is concentrated and where it is missing'],
-    heatmap:     ['Cross-Map Heatmap','Industry × Value Chain density · Opportunity zones highlighted'],
     companies:   ['Company Intelligence','Positioning · Competitor mapping · 100 tracked companies'],
     query:       ['Query Intelligence','Ask natural language questions · Get direct answers + data'],
     live:        ['Live Signals','Real-time robotics news · AI-tagged by sector & value chain'],
-    momentum:    ['Momentum Tracker','Which sectors are gaining signal volume right now'],
     fusion:      ['Opportunity + Momentum','Structural gaps fused with live market signals'],
     history:     ['Signal History','Performance tracking · Global stock correlation · Signal outcomes']
   };
@@ -1146,13 +1118,9 @@ function navigate(tab) {
   const content = document.getElementById('content');
   content.innerHTML = '';
   if(tab==='opportunity') renderOpportunity();
-  else if(tab==='market') renderMarket();
-  else if(tab==='capital') renderCapital();
-  else if(tab==='heatmap') renderHeatmap();
   else if(tab==='companies') renderCompanies();
   else if(tab==='query') renderQuery();
   else if(tab==='live') renderLive();
-  else if(tab==='momentum') renderMomentum();
   else if(tab==='fusion') renderFusion();
   else if(tab==='history') renderHistory();
 }
@@ -1355,76 +1323,6 @@ function renderLive() {
       </div>
     </div>
   </div>`;
-}
-
-// ===================== MOMENTUM TRACKER =====================
-function renderMomentum() {
-  const c = document.getElementById('content');
-  if (!liveData.articles.length) {
-    c.innerHTML = renderOfflineBanner('Momentum Tracker');
-    return;
-  }
-  const mom = liveData.momentum;
-  const industries = Object.entries(mom).filter(([k,v])=>v.count>0).sort((a,b)=>b[1].count-a[1].count);
-  const max = industries.length ? industries[0][1].count : 1;
-  const barColors = ['#10b981','#34d399','#6366f1','#818cf8','#f59e0b','#fbbf24','#06b6d4','#64748b'];
-  const trendLabel = (n) => n>=4 ? ['hot','🔥 HOT'] : n>=2 ? ['warm','📈 ACTIVE'] : ['cold','💤 LOW'];
-
-  c.innerHTML = `
-  <div class="grid grid-3" style="margin-bottom:20px">
-    <div class="card card-sm"><div class="card-title">Hottest Sector</div><div class="card-value" style="font-size:18px;color:#34d399">${industries[0]?.[0]||'—'}</div><div class="card-delta">${industries[0]?.[1].count||0} signals this cycle</div></div>
-    <div class="card card-sm"><div class="card-title">Funding Events</div><div class="card-value" style="color:#818cf8">${Object.values(mom).reduce((s,v)=>s+v.invest,0)}</div><div class="card-delta">Investment signals detected</div></div>
-    <div class="card card-sm"><div class="card-title">Total Signals</div><div class="card-value" style="color:var(--teal)">${liveData.articles.length}</div><div class="card-delta">Across all sectors</div></div>
-  </div>
-
-  <div class="grid grid-2" style="margin-bottom:20px">
-    <div class="card">
-      <div class="card-header"><div class="card-h">Signal Volume by Sector</div></div>
-      ${industries.map(([ind,v],i)=>{
-        const [tcls, tlabel] = trendLabel(v.count);
-        return `<div class="momentum-row">
-          <div class="momentum-label">${ind}</div>
-          <div class="momentum-bar-track"><div class="momentum-bar-fill" style="width:${Math.round(v.count/max*100)}%;background:${barColors[i]||'#6366f1'}"></div></div>
-          <div class="momentum-count">${v.count}</div>
-          <span class="momentum-trend trend-${tcls}">${tlabel}</span>
-        </div>`;
-      }).join('')}
-    </div>
-    <div class="card">
-      <div class="card-header"><div class="card-h">Signal Breakdown</div><span style="font-size:11px;color:var(--muted)">Invest vs Watch</span></div>
-      <div class="chart-wrap"><canvas id="chart-mom"></canvas></div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header"><div class="card-h">Recent Headlines by Sector</div></div>
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:4px">
-      ${industries.slice(0,6).map(([ind,v])=>`
-      <div style="background:var(--surface2);border-radius:8px;padding:12px">
-        <div style="font-size:11px;font-weight:700;color:var(--accent2);margin-bottom:8px">${ind} <span style="color:var(--muted);font-weight:400">(${v.count} signals)</span></div>
-        ${v.articles.slice(0,3).map(t=>`<div style="font-size:11px;color:var(--muted);padding:3px 0;border-bottom:1px solid rgba(30,45,69,.3);line-height:1.4">${t.slice(0,70)}${t.length>70?'…':''}</div>`).join('')}
-      </div>`).join('')}
-    </div>
-  </div>`;
-
-  const labels = industries.map(([k])=>k);
-  const investData = industries.map(([,v])=>v.invest);
-  const watchData = industries.map(([,v])=>v.watch);
-  charts.mom = new Chart(document.getElementById('chart-mom'), {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        {label:'Invest Signals',data:investData,backgroundColor:'rgba(16,185,129,.7)',borderRadius:4,borderSkipped:false},
-        {label:'Watch Signals',data:watchData,backgroundColor:'rgba(99,102,241,.5)',borderRadius:4,borderSkipped:false}
-      ]
-    },
-    options: {
-      responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{labels:{color:'#64748b',font:{size:11}}},tooltip:{backgroundColor:'#1e293b',borderColor:'#1e2d45',borderWidth:1}},
-      scales:{x:{grid:{display:false},ticks:{color:'#64748b',font:{size:10}}},y:{grid:{color:'rgba(30,45,69,.5)'},ticks:{color:'#64748b',font:{size:10}},stacked:false}}
-    }
-  });
 }
 
 // ===================== FUSION VIEW =====================
@@ -2347,328 +2245,11 @@ function renderNewsFeed() {
   }).join('');
 }
 
-// ===================== MARKET STRUCTURE =====================
-function renderMarket() {
-  const c = document.getElementById('content');
-  const indCounts = INDUSTRIES.map(i=>COMPANIES.filter(c=>c.industry===i).length);
-  const vclCounts = VCL.map(v=>COMPANIES.filter(c=>c.vcl===v).length);
-  const publicCount = COMPANIES.filter(c=>c.status==='Public').length;
-  const privateCount = COMPANIES.filter(c=>c.status==='Private').length;
-
-  c.innerHTML = `
-  <div class="grid grid-4" style="margin-bottom:20px">
-    ${INDUSTRIES.map((ind,i)=>`
-    <div class="card card-sm">
-      <div class="card-title">${ind}</div>
-      <div class="card-value">${indCounts[i]}</div>
-      <div class="card-delta">companies tracked · <span class="${gapScore(ind)>0.4?'up':''}">Gap: ${Math.round(gapScore(ind)*100)}%</span></div>
-    </div>`).join('')}
-  </div>
-  <div class="grid grid-2" style="margin-bottom:20px">
-    <div class="card">
-      <div class="card-header"><div class="card-h">Industry Distribution</div><span style="font-size:11px;color:var(--muted)">100 companies</span></div>
-      <div class="chart-wrap"><canvas id="chart-ind"></canvas></div>
-    </div>
-    <div class="card">
-      <div class="card-header"><div class="card-h">Value Chain Distribution</div><span style="font-size:11px;color:var(--muted)">7 layers</span></div>
-      <div class="chart-wrap"><canvas id="chart-vcl"></canvas></div>
-    </div>
-  </div>
-  <div class="grid grid-2">
-    <div class="card">
-      <div class="card-header"><div class="card-h">Public vs Private</div></div>
-      <div class="chart-wrap-sm"><canvas id="chart-pub"></canvas></div>
-      <div style="display:flex;gap:16px;justify-content:center;margin-top:12px">
-        <div style="display:flex;align-items:center;gap:6px;font-size:12px"><div style="width:10px;height:10px;border-radius:50%;background:#10b981"></div>Public: ${publicCount}</div>
-        <div style="display:flex;align-items:center;gap:6px;font-size:12px"><div style="width:10px;height:10px;border-radius:50%;background:#6366f1"></div>Private: ${privateCount}</div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-header"><div class="card-h">Opportunity Gap Score by Sector</div><span class="tag tag-invest" style="font-size:10px">Higher = More Opportunity</span></div>
-      <div class="chart-wrap"><canvas id="chart-gap"></canvas></div>
-    </div>
-  </div>`;
-
-  const chartColors = ['#6366f1','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899'];
-
-  charts.ind = new Chart(document.getElementById('chart-ind'), {
-    type:'bar',
-    data:{labels:INDUSTRIES,datasets:[{data:indCounts,backgroundColor:chartColors,borderRadius:6,borderSkipped:false}]},
-    options:{...barOpts('Companies per Industry')}
-  });
-
-  charts.vcl = new Chart(document.getElementById('chart-vcl'), {
-    type:'bar',
-    data:{labels:VCL.map(v=>v.length>15?v.slice(0,15)+'…':v),datasets:[{data:vclCounts,backgroundColor:chartColors,borderRadius:6,borderSkipped:false}]},
-    options:{...barOpts('Companies per Value Chain Layer')}
-  });
-
-  charts.pub = new Chart(document.getElementById('chart-pub'), {
-    type:'doughnut',
-    data:{labels:['Public','Private'],datasets:[{data:[publicCount,privateCount],backgroundColor:['#10b981','#6366f1'],borderWidth:0,hoverBorderWidth:0}]},
-    options:{...doughnutOpts()}
-  });
-
-  const gapScores = INDUSTRIES.map(ind=>Math.round(gapScore(ind)*100));
-  charts.gap = new Chart(document.getElementById('chart-gap'), {
-    type:'bar',
-    data:{labels:INDUSTRIES,datasets:[{data:gapScores,backgroundColor:gapScores.map(s=>s>55?'#10b981':s>35?'#f59e0b':'#6366f1'),borderRadius:6,borderSkipped:false}]},
-    options:{...barOpts('Gap Score (% of value chain uncovered)',true)}
-  });
-}
-
-function barOpts(title, pct=false) {
-  return {
-    responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{display:false},tooltip:{backgroundColor:'#1e293b',borderColor:'#1e2d45',borderWidth:1,titleColor:'#e2e8f0',bodyColor:'#94a3b8',padding:10,callbacks:{label:ctx=>`${pct?ctx.raw+'%':ctx.raw} ${pct?'uncovered':' companies'}`}}},
-    scales:{x:{grid:{display:false},ticks:{color:'#64748b',font:{size:10}}},y:{grid:{color:'rgba(30,45,69,.5)'},ticks:{color:'#64748b',font:{size:10}}}}
-  };
-}
-function doughnutOpts() {
-  return {
-    responsive:true,maintainAspectRatio:false,cutout:'70%',
-    plugins:{legend:{display:false},tooltip:{backgroundColor:'#1e293b',borderColor:'#1e2d45',borderWidth:1,titleColor:'#e2e8f0',bodyColor:'#94a3b8'}}
-  };
-}
-
-// ===================== CAPITAL INTELLIGENCE =====================
-function renderCapital() {
-  const c = document.getElementById('content');
-
-  // Sector funding (capped to avoid mega-cos distortion)
-  const sectorCaps = INDUSTRIES.map(ind=>{
-    const companies = COMPANIES.filter(co=>co.industry===ind);
-    const total = companies.reduce((s,co)=>s+Math.min(co.fundingM,500000),0);
-    const count = companies.length;
-    const avg = count > 0 ? total/count : 0;
-    return {ind, total, avg, count};
-  }).sort((a,b)=>b.total-a.total);
-
-  const maxTotal = sectorCaps[0].total;
-
-  // Top companies by funding (excluding mega-corps for clarity, or cap them)
-  const topCompanies = [...COMPANIES]
-    .filter(c=>c.fundingM>0)
-    .sort((a,b)=>Math.min(b.fundingM,500000)-Math.min(a.fundingM,500000))
-    .slice(0,15);
-
-  const maxFunding = Math.min(topCompanies[0].fundingM, 500000);
-
-  c.innerHTML = `
-  <div class="grid grid-4" style="margin-bottom:20px">
-    <div class="card card-sm">
-      <div class="card-title">Most Funded Sector</div>
-      <div class="card-value" style="font-size:20px;color:#34d399">${sectorCaps[0].ind}</div>
-      <div class="card-delta">Capital concentration leader</div>
-    </div>
-    <div class="card card-sm">
-      <div class="card-title">Least Funded Sector</div>
-      <div class="card-value" style="font-size:20px;color:#f87171">${sectorCaps[sectorCaps.length-1].ind}</div>
-      <div class="card-delta">Capital gap — potential opportunity</div>
-    </div>
-    <div class="card card-sm">
-      <div class="card-title">Private Companies</div>
-      <div class="card-value">52</div>
-      <div class="card-delta">Not yet priced by market</div>
-    </div>
-    <div class="card card-sm">
-      <div class="card-title">Undisclosed Funding</div>
-      <div class="card-value">${COMPANIES.filter(c=>c.fundingM===0).length}</div>
-      <div class="card-delta">Unlisted / stealth stage</div>
-    </div>
-  </div>
-
-  <div class="grid grid-2" style="margin-bottom:20px">
-    <div class="card">
-      <div class="card-header">
-        <div class="card-h">Capital by Sector</div>
-        <span style="font-size:10px;color:var(--muted)">Capped at $500B per company</span>
-      </div>
-      <div class="capital-list">
-        ${sectorCaps.map((s,i)=>`
-        <div class="capital-item">
-          <div class="capital-rank">${i+1}</div>
-          <div>
-            <div class="capital-name">${s.ind}</div>
-            <div class="capital-sector">${s.count} companies</div>
-          </div>
-          <div class="capital-bar-wrap">
-            <div class="capital-bar" style="width:${Math.round(s.total/maxTotal*100)}%"></div>
-          </div>
-          <div class="capital-amt">${formatM(s.total)}</div>
-        </div>`).join('')}
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-header">
-        <div class="card-h">Avg Funding Per Company by Sector</div>
-        <span class="tag tag-invest" style="font-size:10px">Low avg = undercapitalized</span>
-      </div>
-      <div class="chart-wrap"><canvas id="chart-avgcap"></canvas></div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header">
-      <div class="card-h">Top 15 Companies by Capital</div>
-      <span style="font-size:11px;color:var(--muted)">Capped at $500B for scale</span>
-    </div>
-    <div class="capital-list">
-      ${topCompanies.map((co,i)=>`
-      <div class="capital-item">
-        <div class="capital-rank">${i+1}</div>
-        <div style="flex:1;min-width:0">
-          <div class="capital-name" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${co.name}</div>
-          <div class="capital-sector">${co.industry} · ${co.vcl}</div>
-        </div>
-        <span class="public-badge ${co.status==='Public'?'public':'private'}">${co.status}</span>
-        <div class="capital-bar-wrap">
-          <div class="capital-bar" style="width:${Math.round(Math.min(co.fundingM,500000)/maxFunding*100)}%"></div>
-        </div>
-        <div class="capital-amt">${formatM(co.fundingM)}</div>
-      </div>`).join('')}
-    </div>
-  </div>`;
-
-  const avgCaps = sectorCaps.map(s=>Math.round(s.avg));
-  const maxAvg = Math.max(...avgCaps);
-  charts.avgcap = new Chart(document.getElementById('chart-avgcap'), {
-    type:'bar',
-    data:{
-      labels:sectorCaps.map(s=>s.ind),
-      datasets:[{
-        data:avgCaps,
-        backgroundColor:avgCaps.map(v=>v<5000?'#ef4444':v<20000?'#f59e0b':'#10b981'),
-        borderRadius:6,borderSkipped:false
-      }]
-    },
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{backgroundColor:'#1e293b',borderColor:'#1e2d45',borderWidth:1,callbacks:{label:ctx=>'Avg: '+formatM(ctx.raw)}}},
-      scales:{x:{grid:{display:false},ticks:{color:'#64748b',font:{size:10}}},y:{grid:{color:'rgba(30,45,69,.5)'},ticks:{color:'#64748b',font:{size:10},callback:v=>formatM(v)}}}
-    }
-  });
-}
-
 function formatM(m) {
   if(m>=1000000) return '$'+Math.round(m/1000000)+'T';
   if(m>=1000) return '$'+Math.round(m/1000)+'B';
   if(m>0) return '$'+m+'M';
   return 'N/A';
-}
-
-// ===================== HEATMAP =====================
-function renderHeatmap() {
-  const c = document.getElementById('content');
-
-  const vclShort = ['Mfg.','Sys. Int.','SW & AI','Design','Comp.','Integr.','Semi.'];
-
-  let hmRows = `
-  <div class="heatmap-row">
-    <div class="heatmap-cell hm-header hm-label">Industry</div>
-    ${VCL.map((v,i)=>`<div class="heatmap-cell hm-header">${vclShort[i]}</div>`).join('')}
-  </div>`;
-
-  INDUSTRIES.forEach(ind=>{
-    hmRows += `<div class="heatmap-row">
-      <div class="heatmap-cell hm-label">${ind}</div>
-      ${VCL.map(v=>{
-        const n = MATRIX[ind][v];
-        const cls = n===0?'hm-0':n===1?'hm-1':n===2?'hm-2':n===3?'hm-3':n===4?'hm-4':n===5?'hm-5':n===6?'hm-6':n===7?'hm-7':n===8?'hm-8':'hm-9plus';
-        const label = n===0?`<div class="hm-zero-badge">GAP</div>`:`${n}`;
-        return `<div class="heatmap-cell ${cls}" title="${ind} × ${v}: ${n} companies" onmouseenter="showTip(event,'${ind} × ${v}','${n===0?'⚡ Opportunity gap — no companies here':'🏢 '+n+' compan'+(n===1?'y':'ies')}')" onmouseleave="hideTip()">${label}</div>`;
-      }).join('')}
-    </div>`;
-  });
-
-  c.innerHTML = `
-  <div class="grid grid-4" style="margin-bottom:20px">
-    <div class="card card-sm">
-      <div class="card-title">Total Cells</div>
-      <div class="card-value">${INDUSTRIES.length * VCL.length}</div>
-      <div class="card-delta">Industry × Value Chain intersections</div>
-    </div>
-    <div class="card card-sm" style="border-color:rgba(16,185,129,.3)">
-      <div class="card-title">Gap Cells (0 companies)</div>
-      <div class="card-value" style="color:#34d399">${INDUSTRIES.reduce((s,i)=>s+VCL.filter(v=>MATRIX[i][v]===0).length,0)}</div>
-      <div class="card-delta">Structural white spaces</div>
-    </div>
-    <div class="card card-sm" style="border-color:rgba(239,68,68,.3)">
-      <div class="card-title">Saturated Cells (5+)</div>
-      <div class="card-value" style="color:#f87171">${INDUSTRIES.reduce((s,i)=>s+VCL.filter(v=>MATRIX[i][v]>=5).length,0)}</div>
-      <div class="card-delta">High competition zones</div>
-    </div>
-    <div class="card card-sm">
-      <div class="card-title">Most Active Cell</div>
-      <div class="card-value" style="font-size:16px;color:#818cf8">Logistics × Mfg.</div>
-      <div class="card-delta">10 companies — most saturated</div>
-    </div>
-  </div>
-
-  <div class="card" style="margin-bottom:20px">
-    <div class="card-header">
-      <div class="card-h">Industry × Value Chain Density Map</div>
-      <span style="font-size:11px;color:var(--muted)">Hover cells for details · Red GAP = investment opportunity</span>
-    </div>
-    <div class="heatmap-wrap">
-      <div class="heatmap">${hmRows}</div>
-    </div>
-    <div class="hm-legend">
-      <span>Density:</span>
-      <div class="hm-legend-item"><div class="hm-legend-dot" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3)"></div>0 (Gap)</div>
-      <div class="hm-legend-item"><div class="hm-legend-dot" style="background:rgba(245,158,11,.15)"></div>1–2</div>
-      <div class="hm-legend-item"><div class="hm-legend-dot" style="background:rgba(99,102,241,.25)"></div>3–4</div>
-      <div class="hm-legend-item"><div class="hm-legend-dot" style="background:rgba(16,185,129,.3)"></div>5–7</div>
-      <div class="hm-legend-item"><div class="hm-legend-dot" style="background:rgba(16,185,129,.6)"></div>8+ (Saturated)</div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header">
-      <div class="card-h">Top Opportunity Gaps</div>
-      <span class="tag tag-invest">Confirmed White Spaces</span>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:4px">
-      ${getTopGaps().map(g=>`
-      <div style="background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:12px">
-        <div style="font-size:11px;font-weight:700;color:#34d399;margin-bottom:4px">🟢 ${g.ind} × ${g.vcl}</div>
-        <div style="font-size:11px;color:var(--muted)">0 companies · ${g.reason}</div>
-      </div>`).join('')}
-    </div>
-  </div>`;
-}
-
-function getTopGaps() {
-  const gaps = [];
-  const reasons = {
-    'Agriculture_Software & AI':'Only Trimble — massive digital farm gap',
-    'Agriculture_Design':'No design-led ag robotics firms',
-    'Agriculture_Integration & Services':'No ag systems integration',
-    'Agriculture_Semiconductor':'Zero ag-specific chips',
-    'Consumer_Software & AI':'No AI platform for home robots',
-    'Consumer_System Integrators':'No consumer robotics ecosystem',
-    'Consumer_Integration & Services':'No deployment services',
-    'Defence_Components & Subsystems':'Sensitive supply chain gap',
-    'Defence_Integration & Services':'No specialist defence integrator',
-    'Defence_Semiconductor':'Sovereign chip imperative',
-    'Healthcare_Components & Subsystems':'Haptics/sensors gap',
-    'Healthcare_Semiconductor':'No medical robotics chips',
-    'Logistics_Design':'No design-led logistics innovation',
-    'Logistics_Semiconductor':'No warehouse AI chips',
-    'Space_Software & AI':'No orbital autonomy software',
-    'Space_System Integrators':'No space systems integrator',
-    'Space_Integration & Services':'No space robotics services',
-    'Space_Semiconductor':'No space-grade robotics chips',
-    'Automotive_System Integrators':'No AV systems integrators'
-  };
-  INDUSTRIES.forEach(ind=>{
-    VCL.forEach(v=>{
-      if(MATRIX[ind][v]===0){
-        gaps.push({ind,vcl:v,reason:reasons[ind+'_'+v]||'Structural gap identified'});
-      }
-    });
-  });
-  return gaps.slice(0,9);
 }
 
 // ===================== COMPANIES =====================
