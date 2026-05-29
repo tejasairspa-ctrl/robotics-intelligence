@@ -625,6 +625,17 @@ body.dark .stock-chg-dn{color:#f87171}
 .hist-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:16px;text-align:center;color:var(--muted)}
 .hist-empty-icon{width:56px;height:56px;border-radius:50%;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);display:flex;align-items:center;justify-content:center}
 
+/* ── NEWS SOURCE STRIP ───────────────────────────────────────────────────────── */
+.insight-source-strip{display:flex;align-items:flex-start;gap:8px;padding:8px 11px;margin:8px 0 6px;background:rgba(99,102,241,.04);border:1px solid rgba(99,102,241,.14);border-radius:7px;font-size:11px;line-height:1.5;text-decoration:none;transition:border .15s,background .15s}
+.insight-source-strip[href]:hover{border-color:rgba(99,102,241,.35);background:rgba(99,102,241,.08);cursor:pointer}
+.insight-source-tag{flex-shrink:0;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:#6366f1;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.2);padding:2px 7px;border-radius:3px;margin-top:1px;white-space:nowrap}
+.insight-source-headline{flex:1;color:var(--text);font-weight:500;word-break:break-word}
+.insight-source-link-icon{flex-shrink:0;color:var(--muted);margin-top:2px;transition:color .15s}
+.insight-source-strip[href]:hover .insight-source-link-icon{color:#6366f1}
+/* ── EXPAND / COLLAPSE ───────────────────────────────────────────────────────── */
+.expand-toggle{display:flex;align-items:center;justify-content:center;gap:5px;padding:7px 12px;margin-top:10px;border-radius:6px;font-size:10px;font-weight:700;color:var(--muted);border:1px dashed var(--border);cursor:pointer;transition:all .15s;user-select:none}
+.expand-toggle:hover{border-color:rgba(99,102,241,.4);color:var(--accent);background:rgba(99,102,241,.04)}
+.insight-detail{display:none}
 /* ── TRACK BUTTON ────────────────────────────────────────────────────────────── */
 .track-btn{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--muted);transition:all .15s;white-space:nowrap;line-height:1.4}
 .track-btn:hover{border-color:rgba(99,102,241,.5);color:var(--accent);background:rgba(99,102,241,.06)}
@@ -1413,6 +1424,40 @@ function renderFusion() {
   </div>`;
 }
 
+// ===================== EXPAND / COLLAPSE INSIGHT CARDS =====================
+const expandedCards = new Set();
+
+function toggleInsight(idx) {
+  const detail = document.getElementById(`insight-detail-${idx}`);
+  const btn    = document.getElementById(`expand-btn-${idx}`);
+  if (!detail) return;
+
+  if (expandedCards.has(idx)) {
+    expandedCards.delete(idx);
+    detail.style.display = 'none';
+    if (btn) btn.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg> Full analysis`;
+  } else {
+    expandedCards.add(idx);
+    detail.style.display = 'block';
+    if (btn) btn.innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg> Collapse`;
+
+    // Lazy-render stock chips on first expand
+    const ins = (window._currentInsights || [])[idx];
+    if (ins) {
+      const stockRow = document.getElementById(`insstock-${idx}`);
+      if (stockRow && !stockRow.dataset.rendered) {
+        stockRow.dataset.rendered = '1';
+        if (ins.relevantTickers?.length) renderStockChips(ins.relevantTickers, {}, stockRow);
+      }
+      const indRow = document.getElementById(`indstock-${idx}`);
+      if (indRow && !indRow.dataset.rendered) {
+        indRow.dataset.rendered = '1';
+        if (ins.indianTickers?.length) renderStockChips(ins.indianTickers, {}, indRow);
+      }
+    }
+  }
+}
+
 // ===================== TRACK SIGNAL =====================
 // trackedSigs: Set of "sector::tag::title30" keys → drives button state
 const trackedSigs   = new Set();
@@ -2020,8 +2065,16 @@ function renderOpportunity() {
         <!-- Title -->
         <div class="signal-title">${ins.title}</div>
 
+        <!-- Source headline strip -->
+        ${ins.topArticleTitle ? `
+        <a class="insight-source-strip" ${ins.topArticleLink ? `href="${ins.topArticleLink}" target="_blank" rel="noopener"` : ''}>
+          <span class="insight-source-tag">${ins.topArticleSource || 'Source'}</span>
+          <span class="insight-source-headline">${ins.topArticleTitle}</span>
+          ${ins.topArticleLink ? `<svg class="insight-source-link-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>` : ''}
+        </a>` : ''}
+
         <!-- Signal strength + age -->
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-top:6px">
           ${strengthViz(ins.momentum || 'medium', score)}
           ${ins.firstSeen ? `<span style="font-size:10px;color:var(--muted)">${ageLabel(ins.evolution, ins.firstSeen)}</span>` : ''}
         </div>
@@ -2035,13 +2088,25 @@ function renderOpportunity() {
           </div>
         </div>
 
-        <!-- What / Why -->
+        <!-- What / Why (brief) -->
         ${ins.what ? `<div class="signal-body" style="margin-top:4px">${ins.what}</div>` : ''}
         ${ins.why  ? `<div class="signal-body" style="margin-top:3px;opacity:.8">${ins.why}</div>` : ''}
 
-        <!-- WHY THIS MATTERS (Upgrade 1) -->
+        <!-- Action (always visible) -->
+        <div class="signal-action">→ ${ins.action || ''}</div>
+
+        <!-- Expand toggle -->
+        <div class="expand-toggle" id="expand-btn-${insIdx}" onclick="toggleInsight(${insIdx})">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          Full analysis
+        </div>
+
+        <!-- COLLAPSIBLE DETAIL SECTION -->
+        <div class="insight-detail" id="insight-detail-${insIdx}">
+
+        <!-- WHY THIS MATTERS -->
         ${ins.whyThisMatters ? `
-        <div class="why-block">
+        <div class="why-block" style="margin-top:10px">
           <div class="why-block-label">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             Why This Matters
@@ -2049,10 +2114,7 @@ function renderOpportunity() {
           <div class="why-block-text">${ins.whyThisMatters}</div>
         </div>` : ''}
 
-        <!-- Action -->
-        <div class="signal-action">→ ${ins.action || ''}</div>
-
-        <!-- NEXT TO WATCH (Upgrade 5) -->
+        <!-- NEXT TO WATCH -->
         ${ins.watchNext && ins.watchNext.length ? `
         <div class="watch-next-block">
           <div class="watch-next-label">
@@ -2062,7 +2124,7 @@ function renderOpportunity() {
           <div class="watch-next-list">${ins.watchNext.map(w => `<span class="watch-next-item">${w}</span>`).join('')}</div>
         </div>` : ''}
 
-        <!-- PRIORITY SCORES (Upgrade 9) -->
+        <!-- PRIORITY SCORES -->
         ${ins.strategicScore != null ? `
         <div class="priority-row">
           <div class="priority-item"><div class="priority-val">${ins.strategicScore}</div><div class="priority-lbl">Strategic</div></div>
@@ -2093,7 +2155,7 @@ function renderOpportunity() {
           </div>` : ''}
         </div>` : ''}
 
-        <!-- THREAT INTELLIGENCE (Upgrade 8) -->
+        <!-- THREAT INTELLIGENCE -->
         ${ins.threats ? `
         <div class="threat-block">
           <div class="threat-label">
@@ -2112,19 +2174,11 @@ function renderOpportunity() {
           </div>
           <div class="stock-chips-row" id="insstock-${insIdx}"></div>
         </div>` : ''}
+
+        </div><!-- /insight-detail -->
       `;
       grid.appendChild(el);
-
-      // Render global stock chips
-      if (ins.relevantTickers && ins.relevantTickers.length) {
-        const stockRow = grid.querySelector(`#insstock-${insIdx}`);
-        if (stockRow) renderStockChips(ins.relevantTickers, {}, stockRow);
-      }
-      // Render Indian NSE stock chips
-      if (ins.indianTickers && ins.indianTickers.length) {
-        const indRow = grid.querySelector(`#indstock-${insIdx}`);
-        if (indRow) renderStockChips(ins.indianTickers, {}, indRow);
-      }
+      // Stock chips are lazily rendered inside toggleInsight() on first expand
     });
   }
 
